@@ -5,17 +5,33 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Electron](https://img.shields.io/badge/Electron-28-blue.svg)](https://www.electronjs.org/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](https://github.com)
-[![Release](https://img.shields.io/github/v/release/YOUR_USERNAME/anotherssh)](https://github.com/YOUR_USERNAME/anotherssh/releases)
+[![Release](https://img.shields.io/github/v/release/YOUR_USERNAME/anotherssh)](https://github.com/chankay/anotherssh/releases)
 
 一个基于 Electron + Node.js 开发的现代化 SSH 客户端，提供直观的图形界面和强大的功能，让远程服务器管理变得简单高效。
 
 ## 📥 下载
 
-访问 [Releases 页面](https://github.com/YOUR_USERNAME/anotherssh/releases) 下载最新版本：
+访问 [Releases 页面](https://github.com/chankay/anotherssh/releases) 下载最新版本：
 
 - **macOS**: `AnotherSSH-{version}-arm64.dmg` (Apple Silicon) 或 `AnotherSSH-{version}-x64.dmg` (Intel)
 - **Windows**: `AnotherSSH Setup {version}.exe` (安装版) 或 `AnotherSSH {version}.exe` (便携版)
 - **Linux**: `AnotherSSH-{version}.AppImage` 或 `anotherssh_{version}_amd64.deb`
+
+### macOS 用户注意 ⚠️
+
+由于应用未经过 Apple 签名，首次打开时会提示"已损坏"。请使用以下方法之一：
+
+**方法 1: 右键打开（推荐）**
+1. 右键点击应用
+2. 选择"打开"
+3. 点击"打开"确认
+
+**方法 2: 终端命令**
+```bash
+xattr -cr /Applications/AnotherSSH.app
+```
+
+详细说明请查看 [CODE_SIGNING.md](CODE_SIGNING.md)。
 
 ## ✨ 功能特性
 
@@ -28,6 +44,7 @@
 - ✅ 会话配置加密存储
 - ✅ 会话搜索功能
 - ✅ 会话导入/导出
+- ✅ 连接状态可视化指示器
 
 ### 终端功能
 - ✅ 完整的终端模拟（基于 xterm.js）
@@ -48,6 +65,9 @@
 
 ### 用户体验
 - ✅ 现代化深色主题
+- ✅ 浅色主题支持
+- ✅ 自定义主题和配色
+- ✅ 终端字体和样式自定义
 - ✅ 快捷键支持（Ctrl/Cmd + N, Ctrl/Cmd + F）
 - ✅ 实时通知提示
 - ✅ 双击快速连接
@@ -178,6 +198,38 @@ GitHub Actions 会自动构建并发布到 Releases。
 - 双击文件 - 下载文件
 - 双击文件夹 - 进入文件夹
 
+### 主题和配色
+
+点击侧边栏顶部的 ⚙️ 图标打开设置：
+
+**11 款内置主题：**
+- 深色模式（默认）
+- 浅色模式
+- Dracula（紫色系）
+- Monokai（经典高对比）
+- Solarized Dark（护眼配色）
+- Nord（北欧冷色调）
+- One Dark（Atom 风格）
+- GitHub Dark（GitHub 官方）
+- Tokyo Night（深蓝色）
+- Gruvbox Dark（复古温暖）
+- Material（Google 设计）
+
+**自定义主题：**
+- 自定义背景色
+- 自定义侧边栏颜色
+- 自定义主色调
+- 自定义文字和边框颜色
+- 实时预览效果
+
+**终端设置：**
+- 字体大小（10-24）
+- 字体选择（Courier New, Monaco, Menlo, Consolas）
+- 光标样式（方块、下划线、竖线）
+- 光标闪烁开关
+
+详细说明请查看 [THEMES.md](THEMES.md)。
+
 ## 🗂️ 项目结构
 
 ```
@@ -239,8 +291,9 @@ ssh-client/
 
 ## 🔄 后续开发计划
 
+- [x] 自定义主题和配色
+- [ ] 更多预设主题
 - [ ] 日志记录和导出
-- [ ] 自定义主题和配色
 - [ ] SSH 隧道/端口转发
 - [ ] 批量命令执行
 - [ ] 脚本录制和回放

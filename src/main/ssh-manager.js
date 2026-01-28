@@ -6,7 +6,7 @@ class SSHManager {
     this.sessionCounter = 0;
   }
 
-  connect(config, onData) {
+  connect(config, onData, onClose) {
     return new Promise((resolve, reject) => {
       const sessionId = `session_${++this.sessionCounter}`;
       const client = new Client();
@@ -34,6 +34,9 @@ class SSHManager {
 
           stream.on('close', () => {
             this.disconnect(sessionId);
+            if (onClose) {
+              onClose(sessionId);
+            }
           });
 
           stream.stderr.on('data', (data) => {

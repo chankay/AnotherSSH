@@ -48,11 +48,18 @@ app.on('activate', () => {
 ipcMain.handle('ssh:connect', async (event, config) => {
   try {
     let resolvedSessionId = null;
-    const sessionId = await sshManager.connect(config, (data) => {
-      if (resolvedSessionId) {
-        mainWindow.webContents.send('ssh:data', { sessionId: resolvedSessionId, data });
+    const sessionId = await sshManager.connect(
+      config, 
+      (data) => {
+        if (resolvedSessionId) {
+          mainWindow.webContents.send('ssh:data', { sessionId: resolvedSessionId, data });
+        }
+      },
+      (sessionId) => {
+        // 连接断开时通知渲染进程
+        mainWindow.webContents.send('ssh:closed', { sessionId });
       }
-    });
+    );
     resolvedSessionId = sessionId;
     return { success: true, sessionId };
   } catch (error) {

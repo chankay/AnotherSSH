@@ -64,6 +64,11 @@ class SSHClient {
       this.handleSSHData(data);
     });
 
+    // 监听 SSH 连接关闭
+    window.ipcRenderer.on('ssh:closed', (event, data) => {
+      this.handleSSHClosed(data);
+    });
+
     // 监听 SFTP 进度
     window.electronAPI.sftp.onProgress((data) => {
       this.updateProgress(data);
@@ -154,6 +159,10 @@ class SSHClient {
 
     document.getElementById('importBtn').addEventListener('click', () => {
       this.importConfig();
+    });
+
+    document.getElementById('settingsBtn').addEventListener('click', () => {
+      this.showSettingsDialog();
     });
 
     document.getElementById('cancelBtn').addEventListener('click', () => {
@@ -310,18 +319,22 @@ class SSHClient {
         this.createTerminal(result.sessionId, config);
         this.hideConnectDialog();
       } else {
-        alert('连接失败: ' + result.error);
+        this.showNotification('连接失败: ' + result.error, 'error');
       }
     } catch (error) {
-      alert('连接错误: ' + error.message);
+      this.showNotification('连接错误: ' + error.message, 'error');
     }
   }
 
   createTerminal(sessionId, config) {
+    // 加载保存的设置
+    const settings = JSON.parse(localStorage.getItem('appSettings') || '{}');
+    
     const terminal = new window.Terminal({
-      cursorBlink: true,
-      fontSize: 14,
-      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      cursorBlink: settings.cursorBlink !== false,
+      fontSize: settings.fontSize || 14,
+      fontFamily: settings.fontFamily || 'Menlo, Monaco, "Courier New", monospace',
+      cursorStyle: settings.cursorStyle || 'block',
       theme: {
         background: '#1e1e1e',
         foreground: '#d4d4d4'
@@ -367,6 +380,11 @@ class SSHClient {
     // 创建标签页
     this.createTab(sessionId, config);
     this.switchToSession(sessionId);
+    
+    // 连接成功后更新状态为已连接
+    setTimeout(() => {
+      this.updateTabStatus(sessionId, 'connected');
+    }, 500);
   }
 
   createTab(sessionId, config) {
@@ -375,7 +393,8 @@ class SSHClient {
     tab.className = 'tab';
     tab.id = `tab-${sessionId}`;
     tab.innerHTML = `
-      <span>${config.name || config.username + '@' + config.host}</span>
+      <span class="tab-status connecting" title="连接中"></span>
+      <span class="tab-name">${config.name || config.username + '@' + config.host}</span>
       <button class="tab-sftp-btn" data-session="${sessionId}" title="打开 SFTP">📁</button>
       <span class="tab-close" data-session="${sessionId}">✕</span>
     `;
@@ -433,7 +452,12 @@ class SSHClient {
     }
   }
 
-  async closeSession(sessionId) {
+  async closeSession(sessionId, skipStatusUpdate = false) {
+    // 更新状态为断开（除非是自动关闭）
+    if (!skipStatusUpdate) {
+      this.updateTabStatus(sessionId, 'disconnected');
+    }
+    
     await window.electronAPI.ssh.disconnect(sessionId);
     
     const terminalData = this.terminals.get(sessionId);
@@ -442,21 +466,25 @@ class SSHClient {
       this.terminals.delete(sessionId);
     }
 
-    const terminalWrapper = document.getElementById(`terminal-${sessionId}`);
-    const tab = document.getElementById(`tab-${sessionId}`);
-    
-    if (terminalWrapper) terminalWrapper.remove();
-    if (tab) tab.remove();
+    // 延迟删除，让用户看到断开状态
+    const delay = skipStatusUpdate ? 0 : 300;
+    setTimeout(() => {
+      const terminalWrapper = document.getElementById(`terminal-${sessionId}`);
+      const tab = document.getElementById(`tab-${sessionId}`);
+      
+      if (terminalWrapper) terminalWrapper.remove();
+      if (tab) tab.remove();
 
-    // 如果关闭的是当前会话，切换到其他会话
-    if (this.activeSessionId === sessionId) {
-      const remainingSessions = Array.from(this.terminals.keys());
-      if (remainingSessions.length > 0) {
-        this.switchToSession(remainingSessions[0]);
-      } else {
-        this.activeSessionId = null;
+      // 如果关闭的是当前会话，切换到其他会话
+      if (this.activeSessionId === sessionId) {
+        const remainingSessions = Array.from(this.terminals.keys());
+        if (remainingSessions.length > 0) {
+          this.switchToSession(remainingSessions[0]);
+        } else {
+          this.activeSessionId = null;
+        }
       }
-    }
+    }, delay);
   }
 
   handleSSHData(data) {
@@ -466,6 +494,24 @@ class SSHClient {
     if (terminalData) {
       terminalData.terminal.write(output);
     }
+  }
+
+  handleSSHClosed(data) {
+    const { sessionId } = data;
+    
+    // 更新标签页状态为断开
+    this.updateTabStatus(sessionId, 'disconnected');
+    
+    // 在终端显示断开消息
+    const terminalData = this.terminals.get(sessionId);
+    if (terminalData) {
+      terminalData.terminal.write('\r\n\x1b[31m[连接已断开]\x1b[0m\r\n');
+    }
+    
+    // 3秒后自动关闭标签页
+    setTimeout(() => {
+      this.closeSession(sessionId, true); // skipStatusUpdate = true
+    }, 3000);
   }
 
   async loadSessions() {
@@ -1043,7 +1089,8 @@ class SSHClient {
     tab.className = 'tab';
     tab.id = `tab-${sftpSessionId}`;
     tab.innerHTML = `
-      <span>${config.name || config.username + '@' + config.host}</span>
+      <span class="tab-status connected" title="已连接"></span>
+      <span class="tab-name">${config.name || config.username + '@' + config.host}</span>
       <span class="tab-sftp">SFTP</span>
       <span class="tab-close" data-session="${sftpSessionId}">✕</span>
     `;
@@ -1517,7 +1564,364 @@ class SSHClient {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   }
+
+  // 设置相关方法
+  getPresetThemes() {
+    return {
+      dark: {
+        name: '深色模式',
+        bgColor: '#1e1e1e',
+        sidebarBg: '#252526',
+        primaryColor: '#0e639c',
+        textColor: '#d4d4d4',
+        borderColor: '#3e3e42',
+        hoverBg: '#3e3e42'
+      },
+      light: {
+        name: '浅色模式',
+        bgColor: '#ffffff',
+        sidebarBg: '#f3f3f3',
+        primaryColor: '#0078d4',
+        textColor: '#333333',
+        borderColor: '#e0e0e0',
+        hoverBg: '#e8e8e8'
+      },
+      dracula: {
+        name: 'Dracula',
+        bgColor: '#282a36',
+        sidebarBg: '#21222c',
+        primaryColor: '#bd93f9',
+        textColor: '#f8f8f2',
+        borderColor: '#44475a',
+        hoverBg: '#44475a'
+      },
+      monokai: {
+        name: 'Monokai',
+        bgColor: '#272822',
+        sidebarBg: '#1e1f1c',
+        primaryColor: '#66d9ef',
+        textColor: '#f8f8f2',
+        borderColor: '#3e3d32',
+        hoverBg: '#3e3d32'
+      },
+      'solarized-dark': {
+        name: 'Solarized Dark',
+        bgColor: '#002b36',
+        sidebarBg: '#073642',
+        primaryColor: '#268bd2',
+        textColor: '#839496',
+        borderColor: '#586e75',
+        hoverBg: '#073642'
+      },
+      nord: {
+        name: 'Nord',
+        bgColor: '#2e3440',
+        sidebarBg: '#3b4252',
+        primaryColor: '#88c0d0',
+        textColor: '#eceff4',
+        borderColor: '#4c566a',
+        hoverBg: '#434c5e'
+      },
+      'one-dark': {
+        name: 'One Dark',
+        bgColor: '#282c34',
+        sidebarBg: '#21252b',
+        primaryColor: '#61afef',
+        textColor: '#abb2bf',
+        borderColor: '#3e4451',
+        hoverBg: '#2c313a'
+      },
+      'github-dark': {
+        name: 'GitHub Dark',
+        bgColor: '#0d1117',
+        sidebarBg: '#161b22',
+        primaryColor: '#58a6ff',
+        textColor: '#c9d1d9',
+        borderColor: '#30363d',
+        hoverBg: '#21262d'
+      },
+      'tokyo-night': {
+        name: 'Tokyo Night',
+        bgColor: '#1a1b26',
+        sidebarBg: '#16161e',
+        primaryColor: '#7aa2f7',
+        textColor: '#a9b1d6',
+        borderColor: '#292e42',
+        hoverBg: '#24283b'
+      },
+      gruvbox: {
+        name: 'Gruvbox Dark',
+        bgColor: '#282828',
+        sidebarBg: '#1d2021',
+        primaryColor: '#83a598',
+        textColor: '#ebdbb2',
+        borderColor: '#504945',
+        hoverBg: '#3c3836'
+      },
+      material: {
+        name: 'Material',
+        bgColor: '#263238',
+        sidebarBg: '#1e272c',
+        primaryColor: '#80cbc4',
+        textColor: '#eeffff',
+        borderColor: '#37474f',
+        hoverBg: '#314549'
+      }
+    };
+  }
+
+  showSettingsDialog() {
+    this.loadSettings();
+    document.getElementById('settingsDialog').style.display = 'flex';
+    
+    // 设置标签切换
+    document.querySelectorAll('.settings-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const tabName = tab.dataset.tab;
+        
+        // 切换标签激活状态
+        document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        // 切换面板显示
+        document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+        document.querySelector(`[data-panel="${tabName}"]`).classList.add('active');
+      });
+    });
+
+    // 主题模式切换
+    document.getElementById('themeMode').addEventListener('change', (e) => {
+      const customSettings = document.getElementById('customThemeSettings');
+      customSettings.style.display = e.target.value === 'custom' ? 'block' : 'none';
+      this.updateThemePreview(e.target.value);
+    });
+
+    // 初始预览
+    this.updateThemePreview(document.getElementById('themeMode').value);
+
+    // 颜色选择器同步
+    this.setupColorSync('bgColor', 'bgColorText');
+    this.setupColorSync('sidebarBgColor', 'sidebarBgColorText');
+    this.setupColorSync('primaryColor', 'primaryColorText');
+    this.setupColorSync('textColor', 'textColorText');
+    this.setupColorSync('borderColor', 'borderColorText');
+
+    // 保存按钮
+    document.getElementById('saveSettingsBtn').addEventListener('click', () => {
+      this.saveSettings();
+      document.getElementById('settingsDialog').style.display = 'none';
+    });
+
+    // 取消按钮
+    document.getElementById('cancelSettingsBtn').addEventListener('click', () => {
+      document.getElementById('settingsDialog').style.display = 'none';
+    });
+
+    // 恢复默认按钮
+    document.getElementById('resetThemeBtn').addEventListener('click', () => {
+      this.resetTheme();
+    });
+  }
+
+  setupColorSync(colorId, textId) {
+    const colorInput = document.getElementById(colorId);
+    const textInput = document.getElementById(textId);
+
+    colorInput.addEventListener('input', (e) => {
+      textInput.value = e.target.value;
+      this.updateThemePreview('custom');
+    });
+
+    textInput.addEventListener('input', (e) => {
+      const value = e.target.value;
+      if (/^#[0-9A-F]{6}$/i.test(value)) {
+        colorInput.value = value;
+        this.updateThemePreview('custom');
+      }
+    });
+  }
+
+  updateThemePreview(themeMode) {
+    const themes = this.getPresetThemes();
+    let theme;
+
+    if (themeMode === 'custom') {
+      theme = {
+        bgColor: document.getElementById('bgColor').value,
+        sidebarBg: document.getElementById('sidebarBgColor').value,
+        primaryColor: document.getElementById('primaryColor').value,
+        textColor: document.getElementById('textColor').value,
+        borderColor: document.getElementById('borderColor').value
+      };
+    } else {
+      theme = themes[themeMode] || themes.dark;
+    }
+
+    // 更新预览
+    const previewSidebar = document.querySelector('.preview-sidebar');
+    const previewContent = document.querySelector('.preview-content');
+    const previewItems = document.querySelectorAll('.preview-item');
+    const previewText = document.querySelector('.preview-text');
+    const previewButton = document.querySelector('.preview-button');
+
+    if (previewSidebar) {
+      previewSidebar.style.background = theme.sidebarBg;
+      previewContent.style.background = theme.bgColor;
+      
+      previewItems.forEach(item => {
+        item.style.background = theme.borderColor;
+      });
+      
+      previewText.style.background = theme.borderColor;
+      previewButton.style.background = theme.primaryColor;
+    }
+  }
+
+  loadSettings() {
+    const settings = JSON.parse(localStorage.getItem('appSettings') || '{}');
+    
+    // 加载主题设置
+    const themeMode = settings.themeMode || 'dark';
+    document.getElementById('themeMode').value = themeMode;
+    document.getElementById('customThemeSettings').style.display = 
+      themeMode === 'custom' ? 'block' : 'none';
+
+    if (themeMode === 'custom' && settings.customTheme) {
+      document.getElementById('bgColor').value = settings.customTheme.bgColor || '#1e1e1e';
+      document.getElementById('bgColorText').value = settings.customTheme.bgColor || '#1e1e1e';
+      document.getElementById('sidebarBgColor').value = settings.customTheme.sidebarBg || '#252526';
+      document.getElementById('sidebarBgColorText').value = settings.customTheme.sidebarBg || '#252526';
+      document.getElementById('primaryColor').value = settings.customTheme.primaryColor || '#0e639c';
+      document.getElementById('primaryColorText').value = settings.customTheme.primaryColor || '#0e639c';
+      document.getElementById('textColor').value = settings.customTheme.textColor || '#d4d4d4';
+      document.getElementById('textColorText').value = settings.customTheme.textColor || '#d4d4d4';
+      document.getElementById('borderColor').value = settings.customTheme.borderColor || '#3e3e42';
+      document.getElementById('borderColorText').value = settings.customTheme.borderColor || '#3e3e42';
+    }
+
+    // 加载终端设置
+    document.getElementById('fontSize').value = settings.fontSize || 14;
+    document.getElementById('fontFamily').value = settings.fontFamily || "'Courier New', monospace";
+    document.getElementById('cursorStyle').value = settings.cursorStyle || 'block';
+    document.getElementById('cursorBlink').checked = settings.cursorBlink !== false;
+  }
+
+  saveSettings() {
+    const themeMode = document.getElementById('themeMode').value;
+    
+    const settings = {
+      themeMode,
+      fontSize: parseInt(document.getElementById('fontSize').value),
+      fontFamily: document.getElementById('fontFamily').value,
+      cursorStyle: document.getElementById('cursorStyle').value,
+      cursorBlink: document.getElementById('cursorBlink').checked
+    };
+
+    if (themeMode === 'custom') {
+      settings.customTheme = {
+        bgColor: document.getElementById('bgColor').value,
+        sidebarBg: document.getElementById('sidebarBgColor').value,
+        primaryColor: document.getElementById('primaryColor').value,
+        textColor: document.getElementById('textColor').value,
+        borderColor: document.getElementById('borderColor').value
+      };
+    }
+
+    localStorage.setItem('appSettings', JSON.stringify(settings));
+    this.applySettings(settings);
+    this.showNotification('设置已保存', 'success');
+  }
+
+  applySettings(settings) {
+    const themes = this.getPresetThemes();
+    let theme;
+
+    // 应用主题
+    if (settings.themeMode === 'custom') {
+      document.body.classList.remove('light-theme');
+      document.body.classList.add('custom-theme');
+      theme = settings.customTheme;
+    } else if (themes[settings.themeMode]) {
+      document.body.classList.remove('light-theme', 'custom-theme');
+      theme = themes[settings.themeMode];
+    } else {
+      // 默认深色主题
+      document.body.classList.remove('light-theme', 'custom-theme');
+      theme = themes.dark;
+    }
+
+    // 应用主题颜色
+    if (theme) {
+      const root = document.documentElement;
+      root.style.setProperty('--bg-color', theme.bgColor);
+      root.style.setProperty('--sidebar-bg', theme.sidebarBg);
+      root.style.setProperty('--primary-color', theme.primaryColor);
+      root.style.setProperty('--text-color', theme.textColor);
+      root.style.setProperty('--border-color', theme.borderColor);
+      root.style.setProperty('--hover-bg', theme.hoverBg || theme.borderColor);
+    }
+
+    // 应用终端设置到所有现有终端
+    this.terminals.forEach((terminalData) => {
+      const terminal = terminalData.terminal;
+      terminal.options.fontSize = settings.fontSize;
+      terminal.options.fontFamily = settings.fontFamily;
+      terminal.options.cursorStyle = settings.cursorStyle;
+      terminal.options.cursorBlink = settings.cursorBlink;
+      terminalData.fitAddon.fit();
+    });
+  }
+
+  resetTheme() {
+    document.getElementById('bgColor').value = '#1e1e1e';
+    document.getElementById('bgColorText').value = '#1e1e1e';
+    document.getElementById('sidebarBgColor').value = '#252526';
+    document.getElementById('sidebarBgColorText').value = '#252526';
+    document.getElementById('primaryColor').value = '#0e639c';
+    document.getElementById('primaryColorText').value = '#0e639c';
+    document.getElementById('textColor').value = '#d4d4d4';
+    document.getElementById('textColorText').value = '#d4d4d4';
+    document.getElementById('borderColor').value = '#3e3e42';
+    document.getElementById('borderColorText').value = '#3e3e42';
+  }
+
+  resetThemeVariables() {
+    const root = document.documentElement;
+    root.style.setProperty('--bg-color', '#1e1e1e');
+    root.style.setProperty('--sidebar-bg', '#252526');
+    root.style.setProperty('--primary-color', '#0e639c');
+    root.style.setProperty('--text-color', '#d4d4d4');
+    root.style.setProperty('--border-color', '#3e3e42');
+  }
+
+  updateTabStatus(sessionId, status) {
+    const tab = document.getElementById(`tab-${sessionId}`);
+    if (!tab) return;
+
+    const statusIndicator = tab.querySelector('.tab-status');
+    if (!statusIndicator) return;
+
+    // 移除所有状态类
+    statusIndicator.classList.remove('connecting', 'connected', 'disconnected');
+    
+    // 添加新状态类
+    statusIndicator.classList.add(status);
+    
+    // 更新 title
+    const statusText = {
+      connecting: '连接中',
+      connected: '已连接',
+      disconnected: '已断开'
+    };
+    statusIndicator.title = statusText[status] || '';
+  }
 }
 
 // 初始化应用
 const app = new SSHClient();
+
+// 应用保存的设置
+const savedSettings = JSON.parse(localStorage.getItem('appSettings') || '{}');
+if (Object.keys(savedSettings).length > 0) {
+  app.applySettings(savedSettings);
+}

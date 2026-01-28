@@ -18,7 +18,10 @@
         </div>
       </div>
       <div class="sidebar-header">
-        <h2>会话管理</h2>
+        <div class="header-title">
+          <h2>会话管理</h2>
+          <button id="settingsBtn" class="icon-btn" title="设置">⚙️</button>
+        </div>
         <div class="search-box">
           <input type="text" id="sessionSearch" placeholder="搜索会话..." />
         </div>
@@ -151,6 +154,131 @@
     <div class="context-menu-item" data-action="edit">✏️ 编辑</div>
     <div class="context-menu-divider"></div>
     <div class="context-menu-item context-menu-danger" data-action="delete">🗑️ 删除</div>
+  </div>
+
+  <!-- 设置对话框 -->
+  <div id="settingsDialog" class="dialog" style="display: none;">
+    <div class="dialog-content settings-dialog">
+      <h3>⚙️ 设置</h3>
+      
+      <div class="settings-tabs">
+        <button class="settings-tab active" data-tab="theme">主题</button>
+        <button class="settings-tab" data-tab="terminal">终端</button>
+      </div>
+
+      <div class="settings-content">
+        <!-- 主题设置 -->
+        <div class="settings-panel active" data-panel="theme">
+          <div class="form-group">
+            <label>主题模式:</label>
+            <select id="themeMode">
+              <option value="dark">深色模式</option>
+              <option value="light">浅色模式</option>
+              <option value="dracula">Dracula</option>
+              <option value="monokai">Monokai</option>
+              <option value="solarized-dark">Solarized Dark</option>
+              <option value="nord">Nord</option>
+              <option value="one-dark">One Dark</option>
+              <option value="github-dark">GitHub Dark</option>
+              <option value="tokyo-night">Tokyo Night</option>
+              <option value="gruvbox">Gruvbox Dark</option>
+              <option value="material">Material</option>
+              <option value="custom">自定义</option>
+            </select>
+          </div>
+
+          <div id="themePreview" class="theme-preview">
+            <div class="preview-box">
+              <div class="preview-sidebar">
+                <div class="preview-item"></div>
+                <div class="preview-item"></div>
+              </div>
+              <div class="preview-content">
+                <div class="preview-text"></div>
+                <div class="preview-button"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="customThemeSettings" style="display: none;">
+            <h4>自定义配色</h4>
+            
+            <div class="color-group">
+              <label>背景色:</label>
+              <input type="color" id="bgColor" value="#1e1e1e">
+              <input type="text" id="bgColorText" value="#1e1e1e" class="color-text">
+            </div>
+
+            <div class="color-group">
+              <label>侧边栏背景:</label>
+              <input type="color" id="sidebarBgColor" value="#252526">
+              <input type="text" id="sidebarBgColorText" value="#252526" class="color-text">
+            </div>
+
+            <div class="color-group">
+              <label>主色调:</label>
+              <input type="color" id="primaryColor" value="#0e639c">
+              <input type="text" id="primaryColorText" value="#0e639c" class="color-text">
+            </div>
+
+            <div class="color-group">
+              <label>文字颜色:</label>
+              <input type="color" id="textColor" value="#d4d4d4">
+              <input type="text" id="textColorText" value="#d4d4d4" class="color-text">
+            </div>
+
+            <div class="color-group">
+              <label>边框颜色:</label>
+              <input type="color" id="borderColor" value="#3e3e42">
+              <input type="text" id="borderColorText" value="#3e3e42" class="color-text">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <button id="resetThemeBtn" class="btn-secondary">恢复默认</button>
+          </div>
+        </div>
+
+        <!-- 终端设置 -->
+        <div class="settings-panel" data-panel="terminal">
+          <div class="form-group">
+            <label>字体大小:</label>
+            <input type="number" id="fontSize" value="14" min="10" max="24">
+          </div>
+
+          <div class="form-group">
+            <label>字体:</label>
+            <select id="fontFamily">
+              <option value="'Courier New', monospace">Courier New</option>
+              <option value="'Monaco', monospace">Monaco</option>
+              <option value="'Menlo', monospace">Menlo</option>
+              <option value="'Consolas', monospace">Consolas</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>光标样式:</label>
+            <select id="cursorStyle">
+              <option value="block">方块</option>
+              <option value="underline">下划线</option>
+              <option value="bar">竖线</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="cursorBlink">
+              光标闪烁
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" id="saveSettingsBtn" class="btn-primary">保存</button>
+        <button type="button" id="cancelSettingsBtn" class="btn-secondary">取消</button>
+      </div>
+    </div>
   </div>
 
   <script>
