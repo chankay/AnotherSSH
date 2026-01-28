@@ -14,8 +14,8 @@
 访问 [Releases 页面](https://github.com/chankay/anotherssh/releases) 下载最新版本：
 
 - **macOS**: `AnotherSSH-{version}-arm64.dmg` (Apple Silicon) 或 `AnotherSSH-{version}-x64.dmg` (Intel)
-- **Windows**: `AnotherSSH Setup {version}.exe` (安装版) 或 `AnotherSSH {version}.exe` (便携版)
-- **Linux**: `AnotherSSH-{version}.AppImage` 或 `anotherssh_{version}_amd64.deb`
+- **Windows**: `AnotherSSH {version} x64.exe` (Intel/AMD 64位) 或 `AnotherSSH {version} arm64.exe` (ARM64)
+- **Linux**: `AnotherSSH-{version}-x64.AppImage` (Intel/AMD 64位) 或 `AnotherSSH-{version}-arm64.AppImage` (ARM64)
 
 ### macOS 用户注意 ⚠️
 
@@ -80,6 +80,12 @@ xattr -cr /Applications/AnotherSSH.app
 - ✅ 智能合并策略
 - ✅ 自动同步支持
 - ✅ 加密数据传输
+
+### 版本更新
+- ✅ 自动检查更新
+- ✅ 手动检查更新
+- ✅ 版本号显示
+- ✅ 一键跳转下载
 
 ## 🚀 技术栈
 
@@ -263,6 +269,18 @@ GitHub Actions 会自动构建并发布到 Releases。
 
 详细说明请查看 [WEBDAV_SYNC.md](WEBDAV_SYNC.md)。
 
+### 版本更新
+
+**自动检查：**
+- 应用启动时自动检查更新（每天一次）
+- 有新版本时在底部状态栏显示提示
+- 点击提示跳转到下载页面
+
+**手动检查：**
+- 点击底部状态栏的版本号（如 v1.0.3）
+- 立即检查是否有新版本
+- 显示检查结果通知
+
 ## 🗂️ 项目结构
 
 ```
@@ -327,6 +345,8 @@ ssh-client/
 
 - [x] 自定义主题和配色
 - [x] WebDAV 配置同步
+- [x] 多架构支持（x64/ARM64）
+- [x] 版本更新检查
 - [ ] 对象存储同步（阿里云 OSS、腾讯云 COS、AWS S3）
 - [ ] 更智能的冲突解决策略
 - [ ] 更多预设主题
