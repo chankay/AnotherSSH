@@ -18,6 +18,8 @@ if (!window.electronAPI) {
     session: {
       save: (sessions) => window.ipcRenderer.invoke('session:save', sessions),
       load: () => window.ipcRenderer.invoke('session:load'),
+      loadEncrypted: () => window.ipcRenderer.invoke('session:loadEncrypted'),
+      saveEncrypted: (sessions) => window.ipcRenderer.invoke('session:saveEncrypted', sessions),
       delete: (sessionId) => window.ipcRenderer.invoke('session:delete', sessionId),
       export: () => window.ipcRenderer.invoke('session:export'),
       import: () => window.ipcRenderer.invoke('session:import')
@@ -34,6 +36,18 @@ if (!window.electronAPI) {
       disconnect: (sessionId) => window.ipcRenderer.invoke('sftp:disconnect', sessionId),
       cancelTransfer: (transferId) => window.ipcRenderer.invoke('sftp:cancelTransfer', transferId),
       onProgress: (callback) => window.ipcRenderer.on('sftp:progress', (event, data) => callback(data))
+    },
+    webdav: {
+      loadConfig: () => window.ipcRenderer.invoke('webdav:loadConfig'),
+      saveConfig: (config) => window.ipcRenderer.invoke('webdav:saveConfig', config),
+      testConnection: (config) => window.ipcRenderer.invoke('webdav:testConnection', config),
+      initClient: (config) => window.ipcRenderer.invoke('webdav:initClient', config),
+      upload: (sessions) => window.ipcRenderer.invoke('webdav:upload', sessions),
+      download: () => window.ipcRenderer.invoke('webdav:download'),
+      smartSync: (localSessions) => window.ipcRenderer.invoke('webdav:smartSync', localSessions),
+      getStatus: () => window.ipcRenderer.invoke('webdav:getStatus'),
+      startAutoSync: (intervalMinutes) => window.ipcRenderer.invoke('webdav:startAutoSync', intervalMinutes),
+      stopAutoSync: () => window.ipcRenderer.invoke('webdav:stopAutoSync')
     }
   };
 }
@@ -167,6 +181,10 @@ class SSHClient {
 
     document.getElementById('cancelBtn').addEventListener('click', () => {
       this.hideConnectDialog();
+    });
+
+    document.getElementById('saveOnlyBtn').addEventListener('click', () => {
+      this.handleSaveOnly();
     });
 
     document.getElementById('authType').addEventListener('change', (e) => {
@@ -307,13 +325,18 @@ class SSHClient {
           config.id = Date.now().toString();
           this.savedSessions.push(config);
           
+          console.log('New session added:', config.name);
+          console.log('Total sessions:', this.savedSessions.length);
+          
           // 如果是新分组，添加到分组列表
           if (config.group && !this.sessionGroups.includes(config.group)) {
             this.sessionGroups.push(config.group);
           }
           
           await window.electronAPI.session.save(this.savedSessions);
+          console.log('Sessions saved to file');
           this.renderSessionList();
+          console.log('Session list rendered');
         }
 
         this.createTerminal(result.sessionId, config);
@@ -324,6 +347,63 @@ class SSHClient {
     } catch (error) {
       this.showNotification('连接错误: ' + error.message, 'error');
     }
+  }
+
+  async handleSaveOnly() {
+    const config = {
+      host: document.getElementById('host').value,
+      port: parseInt(document.getElementById('port').value),
+      username: document.getElementById('username').value,
+      name: document.getElementById('sessionName').value || `${document.getElementById('username').value}@${document.getElementById('host').value}`,
+      group: document.getElementById('sessionGroup').value
+    };
+
+    const authType = document.getElementById('authType').value;
+    if (authType === 'password') {
+      config.password = document.getElementById('password').value;
+    } else {
+      config.privateKey = document.getElementById('privateKey').value;
+    }
+
+    // 验证必填字段
+    if (!config.host || !config.username) {
+      this.showNotification('请填写主机地址和用户名', 'error');
+      return;
+    }
+
+    // 如果是编辑模式，更新现有会话
+    if (this.editingSessionId) {
+      const index = this.savedSessions.findIndex(s => s.id === this.editingSessionId);
+      if (index > -1) {
+        config.id = this.editingSessionId;
+        this.savedSessions[index] = config;
+        
+        // 如果是新分组，添加到分组列表
+        if (config.group && !this.sessionGroups.includes(config.group)) {
+          this.sessionGroups.push(config.group);
+        }
+        
+        await window.electronAPI.session.save(this.savedSessions);
+        this.renderSessionList();
+        this.hideConnectDialog();
+        this.showNotification('会话已更新', 'success');
+        return;
+      }
+    }
+
+    // 新建会话
+    config.id = Date.now().toString();
+    this.savedSessions.push(config);
+    
+    // 如果是新分组，添加到分组列表
+    if (config.group && !this.sessionGroups.includes(config.group)) {
+      this.sessionGroups.push(config.group);
+    }
+    
+    await window.electronAPI.session.save(this.savedSessions);
+    this.renderSessionList();
+    this.hideConnectDialog();
+    this.showNotification('会话已保存', 'success');
   }
 
   createTerminal(sessionId, config) {
@@ -532,6 +612,10 @@ class SSHClient {
     const sessionList = document.getElementById('sessionList');
     sessionList.innerHTML = '';
 
+    console.log('Rendering session list, total sessions:', this.savedSessions.length);
+    console.log('Search query:', this.searchQuery);
+    console.log('Session groups:', this.sessionGroups);
+
     // 按分组组织会话
     const groupedSessions = {};
     
@@ -549,6 +633,7 @@ class SSHClient {
       if (this.searchQuery) {
         const searchText = `${session.name} ${session.host} ${session.username} ${session.group}`.toLowerCase();
         if (!searchText.includes(this.searchQuery)) {
+          console.log('Session filtered out by search:', session.name);
           return;
         }
       }
@@ -558,7 +643,10 @@ class SSHClient {
         groupedSessions[group] = [];
       }
       groupedSessions[group].push(session);
+      console.log('Session added to group:', session.name, '->', group);
     });
+
+    console.log('Grouped sessions:', Object.keys(groupedSessions).map(k => `${k}: ${groupedSessions[k].length}`));
 
     // 渲染每个分组
     Object.keys(groupedSessions).sort().forEach(groupName => {
@@ -566,10 +654,14 @@ class SSHClient {
       
       // 如果搜索时分组为空，跳过
       if (this.searchQuery && sessions.length === 0) {
+        console.log('Skipping empty group during search:', groupName);
         return;
       }
 
+      console.log('Rendering group:', groupName, 'with', sessions.length, 'sessions');
+
       const isCollapsed = this.collapsedGroups.has(groupName);
+      console.log('Group collapsed:', groupName, isCollapsed);
       
       const groupDiv = document.createElement('div');
       groupDiv.className = 'session-group';
@@ -661,7 +753,10 @@ class SSHClient {
 
       groupDiv.appendChild(sessionsDiv);
       sessionList.appendChild(groupDiv);
+      console.log('Group appended to DOM:', groupName);
     });
+    
+    console.log('Session list rendering complete, total groups:', Object.keys(groupedSessions).length);
   }
 
   createNewGroup() {
@@ -1721,6 +1816,25 @@ class SSHClient {
     document.getElementById('resetThemeBtn').addEventListener('click', () => {
       this.resetTheme();
     });
+
+    // WebDAV 同步相关
+    this.loadWebDAVConfig();
+    
+    // 自动同步复选框
+    document.getElementById('autoSyncEnabled').addEventListener('change', (e) => {
+      document.getElementById('autoSyncIntervalGroup').style.display = 
+        e.target.checked ? 'block' : 'none';
+    });
+
+    // 测试连接按钮
+    document.getElementById('testWebdavBtn').addEventListener('click', async () => {
+      await this.testWebDAVConnection();
+    });
+
+    // 立即同步按钮
+    document.getElementById('syncNowBtn').addEventListener('click', async () => {
+      await this.syncNow();
+    });
   }
 
   setupColorSync(colorId, textId) {
@@ -1829,7 +1943,41 @@ class SSHClient {
 
     localStorage.setItem('appSettings', JSON.stringify(settings));
     this.applySettings(settings);
+    
+    // 保存 WebDAV 配置
+    this.saveWebDAVConfig();
+    
     this.showNotification('设置已保存', 'success');
+  }
+
+  async saveWebDAVConfig() {
+    const url = document.getElementById('webdavUrl').value.trim();
+    const username = document.getElementById('webdavUsername').value.trim();
+    const password = document.getElementById('webdavPassword').value;
+    const remotePath = document.getElementById('webdavRemotePath').value.trim() || 'anotherssh-config.json';
+    const autoSync = document.getElementById('autoSyncEnabled').checked;
+    const syncInterval = parseInt(document.getElementById('autoSyncInterval').value);
+
+    if (url && username && password) {
+      const config = {
+        url,
+        username,
+        password,
+        remotePath,
+        autoSync,
+        syncInterval
+      };
+
+      await window.electronAPI.webdav.saveConfig(config);
+      await window.electronAPI.webdav.initClient(config);
+
+      // 启动或停止自动同步
+      if (autoSync) {
+        await window.electronAPI.webdav.startAutoSync(syncInterval);
+      } else {
+        await window.electronAPI.webdav.stopAutoSync();
+      }
+    }
   }
 
   applySettings(settings) {
@@ -1914,6 +2062,228 @@ class SSHClient {
       disconnected: '已断开'
     };
     statusIndicator.title = statusText[status] || '';
+  }
+
+  // ========== WebDAV 同步相关方法 ==========
+
+  async loadWebDAVConfig() {
+    try {
+      const result = await window.electronAPI.webdav.loadConfig();
+      if (result.success && result.config) {
+        document.getElementById('webdavUrl').value = result.config.url || '';
+        document.getElementById('webdavUsername').value = result.config.username || '';
+        document.getElementById('webdavPassword').value = result.config.password || '';
+        document.getElementById('webdavRemotePath').value = result.config.remotePath || 'anotherssh-config.json';
+        document.getElementById('autoSyncEnabled').checked = result.config.autoSync || false;
+        document.getElementById('autoSyncInterval').value = result.config.syncInterval || 5;
+        document.getElementById('autoSyncIntervalGroup').style.display = 
+          result.config.autoSync ? 'block' : 'none';
+
+        // 初始化客户端
+        if (result.config.url && result.config.username && result.config.password) {
+          await window.electronAPI.webdav.initClient(result.config);
+        }
+      } else {
+        // 设置默认值
+        document.getElementById('webdavRemotePath').value = 'anotherssh-config.json';
+      }
+
+      // 更新状态显示
+      await this.updateSyncStatus();
+    } catch (error) {
+      console.error('Failed to load WebDAV config:', error);
+    }
+  }
+
+  async updateSyncStatus() {
+    try {
+      const status = await window.electronAPI.webdav.getStatus();
+      if (status.success) {
+        const statusText = document.getElementById('syncStatusText');
+        const lastSyncTime = document.getElementById('lastSyncTime');
+
+        if (status.configured && status.connected) {
+          statusText.textContent = '✅ 已连接';
+          statusText.style.color = '#4caf50';
+        } else if (status.configured) {
+          statusText.textContent = '⚠️ 已配置未连接';
+          statusText.style.color = '#ff9800';
+        } else {
+          statusText.textContent = '❌ 未配置';
+          statusText.style.color = '#f44336';
+        }
+
+        if (status.lastSyncTime) {
+          const time = new Date(status.lastSyncTime);
+          lastSyncTime.textContent = time.toLocaleString('zh-CN');
+        } else {
+          lastSyncTime.textContent = '从未';
+        }
+      }
+    } catch (error) {
+      console.error('Failed to update sync status:', error);
+    }
+  }
+
+  async testWebDAVConnection() {
+    const url = document.getElementById('webdavUrl').value.trim();
+    const username = document.getElementById('webdavUsername').value.trim();
+    const password = document.getElementById('webdavPassword').value;
+    const remotePath = document.getElementById('webdavRemotePath').value.trim() || 'anotherssh-config.json';
+
+    if (!url || !username || !password) {
+      this.showNotification('请填写完整的 WebDAV 配置', 'error');
+      return;
+    }
+
+    const testBtn = document.getElementById('testWebdavBtn');
+    testBtn.disabled = true;
+    testBtn.textContent = '测试中...';
+
+    try {
+      const result = await window.electronAPI.webdav.testConnection({
+        url,
+        username,
+        password
+      });
+
+      if (result.success) {
+        this.showNotification('✅ 连接成功！', 'success');
+        
+        // 保存配置并初始化客户端
+        const config = {
+          url,
+          username,
+          password,
+          remotePath,
+          autoSync: document.getElementById('autoSyncEnabled').checked,
+          syncInterval: parseInt(document.getElementById('autoSyncInterval').value)
+        };
+        
+        await window.electronAPI.webdav.saveConfig(config);
+        await window.electronAPI.webdav.initClient(config);
+        await this.updateSyncStatus();
+        
+        console.log('WebDAV config saved and initialized with remotePath:', remotePath);
+      } else {
+        this.showNotification(`❌ 连接失败: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      this.showNotification(`❌ 连接失败: ${error.message}`, 'error');
+    } finally {
+      testBtn.disabled = false;
+      testBtn.textContent = '测试连接';
+    }
+  }
+
+  async syncNow() {
+    const syncBtn = document.getElementById('syncNowBtn');
+    syncBtn.disabled = true;
+    syncBtn.textContent = '同步中...';
+
+    try {
+      // 确保使用最新的配置重新初始化客户端
+      const url = document.getElementById('webdavUrl').value.trim();
+      const username = document.getElementById('webdavUsername').value.trim();
+      const password = document.getElementById('webdavPassword').value;
+      const remotePath = document.getElementById('webdavRemotePath').value.trim() || 'anotherssh-config.json';
+      
+      if (!url || !username || !password) {
+        this.showNotification('请先配置 WebDAV 连接', 'error');
+        syncBtn.disabled = false;
+        syncBtn.textContent = '立即同步';
+        return;
+      }
+
+      const config = {
+        url,
+        username,
+        password,
+        remotePath,
+        autoSync: document.getElementById('autoSyncEnabled').checked,
+        syncInterval: parseInt(document.getElementById('autoSyncInterval').value)
+      };
+      
+      // 重新初始化客户端以使用最新的 remotePath
+      await window.electronAPI.webdav.saveConfig(config);
+      await window.electronAPI.webdav.initClient(config);
+      
+      console.log('Syncing with remotePath:', remotePath);
+      
+      // 先保存当前会话（确保数据是最新的）
+      await window.electronAPI.session.save(this.savedSessions);
+      
+      // 获取加密后的会话数据用于同步
+      const encryptedResult = await window.electronAPI.session.loadEncrypted();
+      if (!encryptedResult.success) {
+        this.showNotification('❌ 无法读取会话数据', 'error');
+        syncBtn.disabled = false;
+        syncBtn.textContent = '立即同步';
+        return;
+      }
+      
+      const sessions = encryptedResult.sessions;
+      console.log('Uploading', sessions.length, 'sessions (encrypted)');
+      
+      // 先尝试下载，看看远程文件是否存在
+      const downloadResult = await window.electronAPI.webdav.download();
+      
+      if (downloadResult.success && downloadResult.sessions && downloadResult.sessions.length > 0) {
+        // 远程有数据，执行智能同步
+        const result = await window.electronAPI.webdav.smartSync(sessions);
+
+        if (result.success) {
+          if (result.action === 'uploaded') {
+            this.showNotification('✅ 配置已上传到云端', 'success');
+          } else if (result.action === 'merged') {
+            // 合并后的数据是加密的，直接保存加密数据
+            await window.electronAPI.session.saveEncrypted(result.sessions);
+            
+            // 重新加载解密后的数据
+            const loadResult = await window.electronAPI.session.load();
+            if (loadResult.success) {
+              this.savedSessions = loadResult.sessions;
+              this.renderSessionList();
+            }
+            
+            const msg = `✅ 同步完成！新增: ${result.changes.added}, 更新: ${result.changes.updated}`;
+            this.showNotification(msg, 'success');
+          }
+          
+          await this.updateSyncStatus();
+        } else {
+          this.showNotification(`❌ 同步失败: ${result.error}`, 'error');
+        }
+      } else {
+        // 远程文件不存在，直接上传
+        const uploadResult = await window.electronAPI.webdav.upload(sessions);
+        
+        if (uploadResult.success) {
+          this.showNotification('✅ 配置已上传到云端', 'success');
+          await this.updateSyncStatus();
+        } else {
+          // 上传失败，可能是文件不存在
+          if (uploadResult.error.includes('404')) {
+            this.showNotification(
+              '❌ 无法创建远程文件。请先在坚果云中手动创建一个空文件，路径为：' + remotePath,
+              'error'
+            );
+          } else {
+            this.showNotification(`❌ 同步失败: ${uploadResult.error}`, 'error');
+          }
+        }
+      }
+    } catch (error) {
+      this.showNotification(`❌ 同步失败: ${error.message}`, 'error');
+    } finally {
+      syncBtn.disabled = false;
+      syncBtn.textContent = '立即同步';
+    }
+  }
+
+  getAllSessions() {
+    // 直接返回所有保存的会话
+    return this.savedSessions || [];
   }
 }
 

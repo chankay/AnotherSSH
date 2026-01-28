@@ -230,6 +230,10 @@ body {
   gap: 10px;
   justify-content: flex-end;
   margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid var(--border-color);
+  flex-shrink: 0;
+  background: var(--bg-color);
 }
 
 .session-item > span {
@@ -1000,6 +1004,15 @@ button:disabled:hover {
 .settings-dialog {
   min-width: 600px;
   max-width: 700px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settings-dialog h3 {
+  flex-shrink: 0;
+  margin-bottom: 15px;
 }
 
 .settings-tabs {
@@ -1007,6 +1020,7 @@ button:disabled:hover {
   gap: 5px;
   margin-bottom: 20px;
   border-bottom: 1px solid #3e3e42;
+  flex-shrink: 0;
 }
 
 .settings-tab {
@@ -1032,6 +1046,30 @@ button:disabled:hover {
 .settings-content {
   position: relative;
   min-height: 300px;
+  max-height: 50vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 10px;
+  flex: 1;
+}
+
+/* 自定义滚动条样式 */
+.settings-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.settings-content::-webkit-scrollbar-track {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+.settings-content::-webkit-scrollbar-thumb {
+  background: var(--primary-color);
+  border-radius: 4px;
+}
+
+.settings-content::-webkit-scrollbar-thumb:hover {
+  background: #1177bb;
 }
 
 .settings-panel {
@@ -1305,4 +1343,84 @@ body.light-theme .context-menu-item:hover {
 
 .tab-close:hover {
   opacity: 1;
+}
+
+/* WebDAV 同步设置样式 */
+.sync-status {
+  background: var(--border-color);
+  padding: 12px 15px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+}
+
+.status-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.status-item:last-child {
+  margin-bottom: 0;
+}
+
+.status-label {
+  font-weight: 500;
+  color: var(--text-color);
+  opacity: 0.8;
+}
+
+.status-value {
+  font-weight: 600;
+}
+
+.sync-help {
+  background: var(--border-color);
+  padding: 12px 15px;
+  border-radius: 6px;
+  margin-top: 15px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.sync-help h4 {
+  margin: 0 0 8px 0 !important;
+  color: var(--primary-color);
+  font-size: 13px !important;
+}
+
+.sync-help ol {
+  margin: 8px 0;
+  padding-left: 18px;
+}
+
+.sync-help li {
+  margin-bottom: 3px;
+}
+
+.sync-help p {
+  margin: 8px 0 5px 0;
+  font-weight: 500;
+}
+
+.form-group small {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-color);
+  opacity: 0.7;
+  line-height: 1.4;
+}
+
+.settings-panel .form-group button {
+  margin-right: 10px;
+}
+
+/* 表单按钮组 */
+.settings-panel .form-group {
+  margin-bottom: 15px;
+}
+
+.settings-panel .form-group:last-child {
+  margin-bottom: 0;
 }

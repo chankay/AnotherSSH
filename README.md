@@ -74,6 +74,13 @@ xattr -cr /Applications/AnotherSSH.app
 - ✅ 连接状态反馈
 - ✅ 响应式界面设计
 
+### 配置同步
+- ✅ WebDAV 云端同步
+- ✅ 支持坚果云、Nextcloud、Synology NAS
+- ✅ 智能合并策略
+- ✅ 自动同步支持
+- ✅ 加密数据传输
+
 ## 🚀 技术栈
 
 - **Electron 28** - 跨平台桌面应用框架
@@ -81,6 +88,7 @@ xattr -cr /Applications/AnotherSSH.app
 - **ssh2** - SSH 连接库
 - **ssh2-sftp-client** - SFTP 文件传输
 - **xterm.js** - 终端模拟器
+- **webdav** - WebDAV 客户端（配置同步）
 
 ## 📦 开发者指南
 
@@ -230,6 +238,31 @@ GitHub Actions 会自动构建并发布到 Releases。
 
 详细说明请查看 [THEMES.md](THEMES.md)。
 
+### 配置同步
+
+点击侧边栏顶部的 ⚙️ 图标，切换到"同步"标签页：
+
+**支持的服务：**
+- 坚果云（推荐，国内访问快）
+- Nextcloud（开源自建）
+- Synology NAS（群晖）
+- 其他 WebDAV 服务
+
+**配置步骤：**
+1. 填写 WebDAV 服务器地址
+2. 输入用户名和密码（建议使用应用专用密码）
+3. 点击"测试连接"验证配置
+4. 启用"自动同步"（可选）
+5. 点击"立即同步"开始同步
+
+**同步功能：**
+- 智能合并本地和云端配置
+- 自动同步（可设置间隔）
+- 加密数据传输
+- 多设备配置共享
+
+详细说明请查看 [WEBDAV_SYNC.md](WEBDAV_SYNC.md)。
+
 ## 🗂️ 项目结构
 
 ```
@@ -271,6 +304,7 @@ ssh-client/
 配置文件：
 - `sessions.json` - 会话配置（加密）
 - `.key` - 加密密钥
+- `webdav-config.json` - WebDAV 同步配置
 
 ## 🐛 故障排除
 
@@ -292,6 +326,9 @@ ssh-client/
 ## 🔄 后续开发计划
 
 - [x] 自定义主题和配色
+- [x] WebDAV 配置同步
+- [ ] 对象存储同步（阿里云 OSS、腾讯云 COS、AWS S3）
+- [ ] 更智能的冲突解决策略
 - [ ] 更多预设主题
 - [ ] 日志记录和导出
 - [ ] SSH 隧道/端口转发

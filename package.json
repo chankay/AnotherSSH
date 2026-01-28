@@ -1,6 +1,6 @@
 {
   "name": "anotherssh",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "A modern cross-platform SSH client - Another way to connect",
   "main": "src/main/main.js",
   "scripts": {
@@ -34,6 +34,7 @@
   "dependencies": {
     "ssh2": "^1.15.0",
     "ssh2-sftp-client": "^10.0.3",
+    "webdav": "^5.8.0",
     "xterm": "^5.3.0",
     "xterm-addon-fit": "^0.8.0",
     "xterm-addon-search": "^0.13.0",

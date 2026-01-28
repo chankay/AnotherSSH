@@ -95,7 +95,7 @@
         </div>
         <div class="form-group">
           <label>
-            <input type="checkbox" id="saveSession">
+            <input type="checkbox" id="saveSession" checked>
             保存此会话配置
           </label>
         </div>
@@ -116,6 +116,7 @@
         </div>
         <div class="form-actions">
           <button type="submit" class="btn-primary" id="connectSubmitBtn">连接</button>
+          <button type="button" class="btn-secondary" id="saveOnlyBtn">仅保存</button>
           <button type="button" id="cancelBtn" class="btn-secondary">取消</button>
         </div>
       </form>
@@ -164,6 +165,7 @@
       <div class="settings-tabs">
         <button class="settings-tab active" data-tab="theme">主题</button>
         <button class="settings-tab" data-tab="terminal">终端</button>
+        <button class="settings-tab" data-tab="sync">同步</button>
       </div>
 
       <div class="settings-content">
@@ -270,6 +272,81 @@
               <input type="checkbox" id="cursorBlink">
               光标闪烁
             </label>
+          </div>
+        </div>
+
+        <!-- 同步设置 -->
+        <div class="settings-panel" data-panel="sync">
+          <div class="sync-status" id="syncStatus">
+            <div class="status-item">
+              <span class="status-label">状态:</span>
+              <span class="status-value" id="syncStatusText">未配置</span>
+            </div>
+            <div class="status-item">
+              <span class="status-label">最后同步:</span>
+              <span class="status-value" id="lastSyncTime">从未</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>WebDAV 服务器地址:</label>
+            <input type="text" id="webdavUrl" placeholder="https://dav.jianguoyun.com/dav/">
+            <small>支持坚果云、Nextcloud、Synology NAS 等</small>
+          </div>
+
+          <div class="form-group">
+            <label>用户名:</label>
+            <input type="text" id="webdavUsername" placeholder="your@email.com">
+          </div>
+
+          <div class="form-group">
+            <label>密码/应用密码:</label>
+            <input type="password" id="webdavPassword" placeholder="应用密码">
+            <small>建议使用应用专用密码，不要使用账号密码</small>
+          </div>
+
+          <div class="form-group">
+            <label>远程文件路径:</label>
+            <input type="text" id="webdavRemotePath" placeholder="anotherssh-config.json">
+            <small>文件将保存在 WebDAV 根目录下，例如：anotherssh-config.json 或 backup/config.json</small>
+          </div>
+
+          <div class="form-group">
+            <button id="testWebdavBtn" class="btn-secondary">测试连接</button>
+            <button id="syncNowBtn" class="btn-primary">立即同步</button>
+          </div>
+
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="autoSyncEnabled">
+              启用自动同步
+            </label>
+          </div>
+
+          <div class="form-group" id="autoSyncIntervalGroup" style="display: none;">
+            <label>同步间隔 (分钟):</label>
+            <input type="number" id="autoSyncInterval" value="5" min="1" max="60">
+          </div>
+
+          <div class="sync-help">
+            <h4>📖 使用说明</h4>
+            <p><strong>坚果云配置:</strong></p>
+            <ol>
+              <li>登录坚果云网页版</li>
+              <li>进入 账户信息 → 安全选项 → 第三方应用管理</li>
+              <li>添加应用密码，名称填 "AnotherSSH"</li>
+              <li>服务器地址: https://dav.jianguoyun.com/dav/</li>
+              <li>用户名: 你的坚果云账号邮箱</li>
+              <li>密码: 刚才生成的应用密码</li>
+            </ol>
+            <p><strong>⚠️ 首次同步:</strong></p>
+            <p>由于坚果云限制，首次使用需要先在坚果云中手动创建配置文件：</p>
+            <ol>
+              <li>打开坚果云网页版或客户端</li>
+              <li>在根目录创建一个空的文本文件</li>
+              <li>文件名与上面"远程文件路径"保持一致</li>
+              <li>然后点击"立即同步"即可</li>
+            </ol>
           </div>
         </div>
       </div>

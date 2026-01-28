@@ -3,11 +3,13 @@ const path = require('path');
 const SSHManager = require('./ssh-manager');
 const SessionStore = require('./session-store');
 const SFTPManager = require('./sftp-manager');
+const WebDAVSync = require('./webdav-sync');
 
 let mainWindow;
 const sshManager = new SSHManager();
 const sessionStore = new SessionStore();
 const sftpManager = new SFTPManager();
+const webdavSync = new WebDAVSync();
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -100,6 +102,39 @@ ipcMain.handle('session:save', async (event, sessions) => {
 
 ipcMain.handle('session:load', async (event) => {
   return sessionStore.loadSessions();
+});
+
+ipcMain.handle('session:loadEncrypted', async (event) => {
+  // 读取加密后的原始数据用于同步
+  try {
+    const fs = require('fs');
+    const sessionsFile = path.join(app.getPath('userData'), 'sessions.json');
+    
+    if (!fs.existsSync(sessionsFile)) {
+      console.log('Sessions file does not exist');
+      return { success: true, sessions: [] };
+    }
+    
+    const data = fs.readFileSync(sessionsFile, 'utf8');
+    const sessions = JSON.parse(data);
+    console.log('Loaded encrypted sessions:', sessions.length);
+    return { success: true, sessions };
+  } catch (error) {
+    console.error('Error loading encrypted sessions:', error);
+    return { success: false, error: error.message, sessions: [] };
+  }
+});
+
+ipcMain.handle('session:saveEncrypted', async (event, encryptedSessions) => {
+  // 直接保存加密后的数据（用于同步）
+  try {
+    const fs = require('fs');
+    const sessionsFile = path.join(app.getPath('userData'), 'sessions.json');
+    fs.writeFileSync(sessionsFile, JSON.stringify(encryptedSessions, null, 2), 'utf8');
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
 });
 
 ipcMain.handle('session:delete', async (event, sessionId) => {
@@ -225,4 +260,45 @@ ipcMain.handle('sftp:uploadFile', async (event, { sessionId, localPath, remotePa
 
 ipcMain.handle('sftp:cancelTransfer', async (event, transferId) => {
   return sftpManager.cancelTransfer(transferId);
+});
+
+// WebDAV Sync handlers
+ipcMain.handle('webdav:loadConfig', async (event) => {
+  return webdavSync.loadConfig();
+});
+
+ipcMain.handle('webdav:saveConfig', async (event, config) => {
+  return webdavSync.saveConfig(config);
+});
+
+ipcMain.handle('webdav:testConnection', async (event, config) => {
+  return await webdavSync.testConnection(config);
+});
+
+ipcMain.handle('webdav:initClient', async (event, config) => {
+  return webdavSync.initClient(config);
+});
+
+ipcMain.handle('webdav:upload', async (event, sessions) => {
+  return await webdavSync.uploadSessions(sessions);
+});
+
+ipcMain.handle('webdav:download', async (event) => {
+  return await webdavSync.downloadSessions();
+});
+
+ipcMain.handle('webdav:smartSync', async (event, localSessions) => {
+  return await webdavSync.smartSync(localSessions);
+});
+
+ipcMain.handle('webdav:getStatus', async (event) => {
+  return webdavSync.getStatus();
+});
+
+ipcMain.handle('webdav:startAutoSync', async (event, intervalMinutes) => {
+  return webdavSync.startAutoSync(intervalMinutes);
+});
+
+ipcMain.handle('webdav:stopAutoSync', async (event) => {
+  return webdavSync.stopAutoSync();
 });
