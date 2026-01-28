@@ -80,8 +80,10 @@ class SSHClient {
     // 加载并显示版本号
     this.loadAppVersion();
     
-    // 检查更新
-    this.checkForUpdates();
+    // 延迟检查更新，不阻塞启动（3秒后执行）
+    setTimeout(() => {
+      this.checkForUpdates();
+    }, 3000);
     
     // 监听来自主进程的数据
     window.electronAPI.ssh.onData((data) => {
@@ -451,10 +453,7 @@ class SSHClient {
         background: '#1e1e1e',
         foreground: '#d4d4d4'
       },
-      allowProposedApi: true,
-      scrollback: 1000,
-      convertEol: false,
-      windowsMode: false
+      scrollback: 1000
     });
 
     const fitAddon = new window.FitAddon();

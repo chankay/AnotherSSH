@@ -315,13 +315,23 @@ ipcMain.handle('check-updates', async () => {
     const https = require('https');
     
     return new Promise((resolve, reject) => {
+      // 设置 10 秒超时
+      const timeout = setTimeout(() => {
+        req.destroy();
+        resolve({
+          hasUpdate: false,
+          error: 'Request timeout'
+        });
+      }, 10000);
+      
       const options = {
         hostname: 'api.github.com',
         path: '/repos/chankay/anotherssh/releases/latest',
         method: 'GET',
         headers: {
           'User-Agent': 'AnotherSSH'
-        }
+        },
+        timeout: 10000
       };
       
       const req = https.request(options, (res) => {
@@ -332,6 +342,7 @@ ipcMain.handle('check-updates', async () => {
         });
         
         res.on('end', () => {
+          clearTimeout(timeout);
           try {
             const release = JSON.parse(data);
             const latestVersion = release.tag_name.replace('v', '');
@@ -348,13 +359,29 @@ ipcMain.handle('check-updates', async () => {
               releaseNotes: release.body
             });
           } catch (error) {
-            reject(error);
+            resolve({
+              hasUpdate: false,
+              error: error.message
+            });
           }
         });
       });
       
       req.on('error', (error) => {
-        reject(error);
+        clearTimeout(timeout);
+        resolve({
+          hasUpdate: false,
+          error: error.message
+        });
+      });
+      
+      req.on('timeout', () => {
+        clearTimeout(timeout);
+        req.destroy();
+        resolve({
+          hasUpdate: false,
+          error: 'Request timeout'
+        });
       });
       
       req.end();
