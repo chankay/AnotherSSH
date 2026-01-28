@@ -19,8 +19,8 @@
     "anotherssh"
   ],
   "author": {
-    "name": "Your Name",
-    "email": "your.email@example.com"
+    "name": "chankay",
+    "email": "no314.kay@gmail.com"
   },
   "license": "MIT",
   "repository": {
@@ -73,11 +73,6 @@
       ],
       "category": "Network",
       "icon": "assets/icon.png"
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "chankay",
-      "repo": "anotherssh"
     }
   }
 }
