@@ -5,11 +5,12 @@
 ## 文件列表
 
 - `logo.svg` - 矢量 Logo
-- `logo.png` - PNG Logo (1024x1024)
+- `logo.png` - PNG Logo (192x192)
+- `icon.png` - 应用图标 (512x512，用于 Linux)
+- `icon-192.png` - 应用图标 (192x192，备份)
 - `DESIGN.md` - 设计说明文档
 - `icon.icns` - macOS 应用图标
 - `icon.ico` - Windows 应用图标
-- `icon.png` - Linux 应用图标
 
 ## 快速开始
 
