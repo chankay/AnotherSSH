@@ -13,9 +13,9 @@
 
 访问 [Releases 页面](https://github.com/chankay/anotherssh/releases) 下载最新版本：
 
-- **macOS**: `AnotherSSH-{version}-arm64.dmg` (Apple Silicon) 或 `AnotherSSH-{version}-x64.dmg` (Intel)
-- **Windows**: `AnotherSSH {version} x64.exe` (Intel/AMD 64位) 或 `AnotherSSH {version} arm64.exe` (ARM64)
-- **Linux**: `AnotherSSH-{version}-x64.AppImage` (Intel/AMD 64位) 或 `AnotherSSH-{version}-arm64.AppImage` (ARM64)
+- **macOS**: `AnotherSSH-{version}-mac-arm64.dmg` (Apple Silicon) 或 `AnotherSSH-{version}-mac-x64.dmg` (Intel)
+- **Windows**: `AnotherSSH-{version}-win-x64.exe` (Intel/AMD 64位) 或 `AnotherSSH-{version}-win-arm64.exe` (ARM64)
+- **Linux**: `AnotherSSH-{version}-linux-x64.AppImage` (Intel/AMD 64位) 或 `AnotherSSH-{version}-linux-arm64.AppImage` (ARM64)
 
 ### macOS 用户注意 ⚠️
 

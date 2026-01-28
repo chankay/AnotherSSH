@@ -63,7 +63,11 @@
           ]
         }
       ],
-      "icon": "assets/icon.icns"
+      "icon": "assets/icon.icns",
+      "artifactName": "${productName}-${version}-mac-${arch}.${ext}"
+    },
+    "dmg": {
+      "writeUpdateInfo": false
     },
     "win": {
       "target": [
@@ -77,6 +81,10 @@
       ],
       "icon": "assets/icon.ico"
     },
+    "portable": {
+      "writeUpdateInfo": false,
+      "artifactName": "${productName}-${version}-win-${arch}.${ext}"
+    },
     "linux": {
       "target": [
         {
@@ -89,6 +97,10 @@
       ],
       "category": "Network",
       "icon": "assets/icon.png"
+    },
+    "appImage": {
+      "writeUpdateInfo": false,
+      "artifactName": "${productName}-${version}-linux-${arch}.${ext}"
     }
   }
 }
