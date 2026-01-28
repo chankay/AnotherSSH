@@ -111,13 +111,11 @@ ipcMain.handle('session:loadEncrypted', async (event) => {
     const sessionsFile = path.join(app.getPath('userData'), 'sessions.json');
     
     if (!fs.existsSync(sessionsFile)) {
-      console.log('Sessions file does not exist');
       return { success: true, sessions: [] };
     }
     
     const data = fs.readFileSync(sessionsFile, 'utf8');
     const sessions = JSON.parse(data);
-    console.log('Loaded encrypted sessions:', sessions.length);
     return { success: true, sessions };
   } catch (error) {
     console.error('Error loading encrypted sessions:', error);
@@ -217,17 +215,24 @@ ipcMain.handle('sftp:upload', async (event, { sessionId, remotePath }) => {
     });
 
     if (result.canceled) {
-      return { success: false, error: 'User canceled' };
+      return { success: false, error: 'User canceled', cancelled: true };
     }
 
     const localPath = result.filePaths[0];
     const fileName = path.basename(localPath);
     const targetPath = remotePath.endsWith('/') ? remotePath + fileName : remotePath + '/' + fileName;
 
-    return await sftpManager.upload(sessionId, localPath, targetPath, (progress) => {
-      mainWindow.webContents.send('sftp:progress', { sessionId, ...progress });
-    });
+    try {
+      const uploadResult = await sftpManager.upload(sessionId, localPath, targetPath, (progress) => {
+        mainWindow.webContents.send('sftp:progress', { sessionId, ...progress });
+      });
+      return uploadResult;
+    } catch (uploadError) {
+      console.error('Upload error:', uploadError);
+      return { success: false, error: uploadError.message };
+    }
   } catch (error) {
+    console.error('SFTP upload handler error:', error);
     return { success: false, error: error.message };
   }
 });

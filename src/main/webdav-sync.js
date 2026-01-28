@@ -102,23 +102,15 @@ class WebDAVSync {
       
       if (!dirPath) {
         // 文件在根目录，不需要创建目录
-        console.log('File is in root directory, no need to create dir');
         return { success: true };
       }
-
-      console.log('Checking directory:', dirPath);
       
       // 检查目录是否存在
       try {
         const exists = await this.client.exists(dirPath);
-        console.log('Directory exists:', exists);
         
         if (!exists) {
-          console.log('Creating remote directory:', dirPath);
           await this.client.createDirectory(dirPath, { recursive: true });
-          console.log('Directory created successfully');
-        } else {
-          console.log('Remote directory already exists');
         }
       } catch (checkError) {
         console.warn('Directory check/create error:', checkError.message);
@@ -161,7 +153,6 @@ class WebDAVSync {
         await this.client.putFileContents(this.remoteFileName, Buffer.from(data, 'utf-8'), {
           overwrite: true
         });
-        console.log('Upload successful (Buffer)');
       } catch (e1) {
         console.error('Upload failed with Buffer:', e1.message);
         
@@ -170,7 +161,6 @@ class WebDAVSync {
           await this.client.putFileContents(this.remoteFileName, data, {
             overwrite: true
           });
-          console.log('Upload successful (String)');
         } catch (e2) {
           console.error('Upload failed with String:', e2.message);
           throw e2; // 抛出最后一个错误
@@ -197,14 +187,11 @@ class WebDAVSync {
     }
 
     try {
-      console.log('Downloading from:', this.remoteFileName);
-      
       // 直接尝试获取文件内容，如果不存在会抛出 404
       const content = await this.client.getFileContents(this.remoteFileName, { format: 'text' });
       const data = JSON.parse(content);
 
       this.lastSyncTime = new Date();
-      console.log('Download successful');
       return { 
         success: true, 
         sessions: data.sessions || [],
@@ -230,7 +217,6 @@ class WebDAVSync {
     }
 
     try {
-      console.log('Getting info for:', this.remoteFileName);
       const stat = await this.client.stat(this.remoteFileName);
       return {
         success: true,
@@ -239,7 +225,6 @@ class WebDAVSync {
         size: stat.size
       };
     } catch (error) {
-      console.error('Get info error:', error);
       // 如果是 404 错误，说明文件不存在
       if (error.response && error.response.status === 404) {
         return { success: true, exists: false };
@@ -249,7 +234,6 @@ class WebDAVSync {
       }
       // 如果是 409 冲突，也当作文件不存在处理
       if (error.status === 409 || error.message.includes('409') || error.message.includes('Conflict')) {
-        console.log('409 Conflict - treating as file does not exist');
         return { success: true, exists: false };
       }
       return { success: false, error: error.message };
@@ -269,7 +253,6 @@ class WebDAVSync {
     this.isSyncing = true;
 
     try {
-      console.log('Starting smart sync...');
       const remoteInfo = await this.getRemoteInfo();
       console.log('Remote info:', remoteInfo);
       
@@ -280,17 +263,13 @@ class WebDAVSync {
 
       // 如果远程不存在，直接上传
       if (!remoteInfo.exists) {
-        console.log('Remote file does not exist, uploading...');
         const result = await this.uploadSessions(localSessions);
-        console.log('Upload result:', result);
         this.isSyncing = false;
         return { ...result, action: 'uploaded' };
       }
 
       // 下载远程数据
-      console.log('Downloading remote sessions...');
       const downloadResult = await this.downloadSessions();
-      console.log('Download result:', downloadResult);
       
       if (!downloadResult.success) {
         this.isSyncing = false;
@@ -301,7 +280,6 @@ class WebDAVSync {
       
       // 如果远程没有数据，直接上传本地数据
       if (remoteSessions.length === 0) {
-        console.log('Remote sessions empty, uploading local...');
         const result = await this.uploadSessions(localSessions);
         this.isSyncing = false;
         return { ...result, action: 'uploaded' };
@@ -310,11 +288,9 @@ class WebDAVSync {
       const remoteTime = new Date(downloadResult.timestamp);
       
       // 合并会话：使用 ID 作为唯一标识
-      console.log('Merging sessions...');
       const merged = this.mergeSessions(localSessions, remoteSessions, remoteTime);
       
       // 上传合并后的数据
-      console.log('Uploading merged sessions...');
       await this.uploadSessions(merged.sessions);
       
       this.isSyncing = false;
@@ -376,7 +352,6 @@ class WebDAVSync {
     this.syncInterval = setInterval(() => {
       // 这里需要从外部传入当前会话数据
       // 实际使用时会通过回调函数获取
-      console.log('Auto sync triggered');
     }, intervalMinutes * 60 * 1000);
 
     return { success: true };

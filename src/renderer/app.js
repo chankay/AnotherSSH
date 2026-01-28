@@ -347,18 +347,13 @@ class SSHClient {
           config.id = Date.now().toString();
           this.savedSessions.push(config);
           
-          console.log('New session added:', config.name);
-          console.log('Total sessions:', this.savedSessions.length);
-          
           // 如果是新分组，添加到分组列表
           if (config.group && !this.sessionGroups.includes(config.group)) {
             this.sessionGroups.push(config.group);
           }
           
           await window.electronAPI.session.save(this.savedSessions);
-          console.log('Sessions saved to file');
           this.renderSessionList();
-          console.log('Session list rendered');
         }
 
         this.createTerminal(result.sessionId, config);
@@ -667,10 +662,6 @@ class SSHClient {
     const sessionList = document.getElementById('sessionList');
     sessionList.innerHTML = '';
 
-    console.log('Rendering session list, total sessions:', this.savedSessions.length);
-    console.log('Search query:', this.searchQuery);
-    console.log('Session groups:', this.sessionGroups);
-
     // 按分组组织会话
     const groupedSessions = {};
     
@@ -688,7 +679,6 @@ class SSHClient {
       if (this.searchQuery) {
         const searchText = `${session.name} ${session.host} ${session.username} ${session.group}`.toLowerCase();
         if (!searchText.includes(this.searchQuery)) {
-          console.log('Session filtered out by search:', session.name);
           return;
         }
       }
@@ -698,10 +688,7 @@ class SSHClient {
         groupedSessions[group] = [];
       }
       groupedSessions[group].push(session);
-      console.log('Session added to group:', session.name, '->', group);
     });
-
-    console.log('Grouped sessions:', Object.keys(groupedSessions).map(k => `${k}: ${groupedSessions[k].length}`));
 
     // 渲染每个分组
     Object.keys(groupedSessions).sort().forEach(groupName => {
@@ -709,14 +696,10 @@ class SSHClient {
       
       // 如果搜索时分组为空，跳过
       if (this.searchQuery && sessions.length === 0) {
-        console.log('Skipping empty group during search:', groupName);
         return;
       }
 
-      console.log('Rendering group:', groupName, 'with', sessions.length, 'sessions');
-
       const isCollapsed = this.collapsedGroups.has(groupName);
-      console.log('Group collapsed:', groupName, isCollapsed);
       
       const groupDiv = document.createElement('div');
       groupDiv.className = 'session-group';
@@ -808,10 +791,7 @@ class SSHClient {
 
       groupDiv.appendChild(sessionsDiv);
       sessionList.appendChild(groupDiv);
-      console.log('Group appended to DOM:', groupName);
     });
-    
-    console.log('Session list rendering complete, total groups:', Object.keys(groupedSessions).length);
   }
 
   createNewGroup() {
@@ -1622,10 +1602,14 @@ class SSHClient {
   }
 
   async sftpUpload() {
-    if (!this.activeSessionId || !this.activeSessionId.startsWith('sftp-')) return;
+    if (!this.activeSessionId || !this.activeSessionId.startsWith('sftp-')) {
+      return;
+    }
 
     const session = this.sftpSessions.get(this.activeSessionId);
-    if (!session) return;
+    if (!session) {
+      return;
+    }
 
     const remotePath = this.currentSftpPath[this.activeSessionId];
     const result = await window.electronAPI.sftp.upload(session.sessionId, remotePath);
@@ -1718,7 +1702,9 @@ class SSHClient {
   }
 
   sftpRefresh() {
-    if (!this.activeSessionId || !this.activeSessionId.startsWith('sftp-')) return;
+    if (!this.activeSessionId || !this.activeSessionId.startsWith('sftp-')) {
+      return;
+    }
     
     // 添加刷新按钮动画
     const refreshBtn = document.getElementById('sftpRefreshBtn');
@@ -1729,7 +1715,8 @@ class SSHClient {
       }, 600);
     }
     
-    this.sftpList(this.activeSessionId, this.currentSftpPath[this.activeSessionId]);
+    const currentPath = this.currentSftpPath[this.activeSessionId];
+    this.sftpList(this.activeSessionId, currentPath);
   }
 
   async closeSFTP(sftpSessionId) {

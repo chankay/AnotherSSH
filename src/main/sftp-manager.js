@@ -272,14 +272,25 @@ class SFTPManager {
 
         readStream.pipe(writeStream);
 
-        writeStream.on('finish', () => {
-          clearInterval(checkInterval);
-          if (!cancelled) {
+        let resolved = false;
+        const resolveOnce = () => {
+          if (!resolved && !cancelled) {
+            resolved = true;
+            clearInterval(checkInterval);
             resolve();
           }
+        };
+
+        writeStream.on('finish', () => {
+          resolveOnce();
+        });
+
+        writeStream.on('close', () => {
+          resolveOnce();
         });
 
         readStream.on('error', (err) => {
+          console.error('Upload readStream error:', err);
           clearInterval(checkInterval);
           cleanup().then(() => {
             if (err.code !== 'ERR_STREAM_PREMATURE_CLOSE') {
@@ -289,6 +300,7 @@ class SFTPManager {
         });
 
         writeStream.on('error', (err) => {
+          console.error('Upload writeStream error:', err);
           clearInterval(checkInterval);
           cleanup().then(() => {
             if (err.message !== 'Premature close' && err.code !== 'ERR_STREAM_PREMATURE_CLOSE') {
@@ -307,6 +319,7 @@ class SFTPManager {
       this.activeTransfers.delete(transferId);
       return { success: true, transferId };
     } catch (error) {
+      console.error('Upload error:', error);
       this.activeTransfers.delete(transferId);
       if (error.message === 'cancelled') {
         return { success: false, error: 'Transfer cancelled', cancelled: true, transferId };
