@@ -4,11 +4,12 @@
 
 ## 文件列表
 
-- `logo.svg` - 矢量 Logo（推荐用于生成其他格式）
+- `logo.svg` - 矢量 Logo
+- `logo.png` - PNG Logo (1024x1024)
 - `DESIGN.md` - 设计说明文档
-- `icon.icns` - macOS 应用图标（需要生成）
-- `icon.ico` - Windows 应用图标（需要生成）
-- `icon.png` - Linux 应用图标（需要生成）
+- `icon.icns` - macOS 应用图标
+- `icon.ico` - Windows 应用图标
+- `icon.png` - Linux 应用图标
 
 ## 快速开始
 
@@ -36,10 +37,11 @@ electron-icon-builder --input=./logo.png --output=.
 ## 当前状态
 
 - ✅ logo.svg - 已创建
+- ✅ logo.png - 已创建
 - ✅ DESIGN.md - 已创建
-- ⏳ icon.icns - 待生成
-- ⏳ icon.ico - 待生成
-- ⏳ icon.png - 待生成
+- ✅ icon.icns - 已生成 (macOS)
+- ✅ icon.ico - 已生成 (Windows)
+- ✅ icon.png - 已生成 (Linux)
 
 ## 注意事项
 

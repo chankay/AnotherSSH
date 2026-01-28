@@ -11,7 +11,13 @@
     "build:win": "electron-builder --win",
     "build:linux": "electron-builder --linux"
   },
-  "keywords": ["ssh", "terminal", "electron", "sftp", "anotherssh"],
+  "keywords": [
+    "ssh",
+    "terminal",
+    "electron",
+    "sftp",
+    "anotherssh"
+  ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
@@ -20,11 +26,11 @@
   },
   "dependencies": {
     "ssh2": "^1.15.0",
+    "ssh2-sftp-client": "^10.0.3",
     "xterm": "^5.3.0",
     "xterm-addon-fit": "^0.8.0",
-    "xterm-addon-web-links": "^0.9.0",
     "xterm-addon-search": "^0.13.0",
-    "ssh2-sftp-client": "^10.0.3"
+    "xterm-addon-web-links": "^0.9.0"
   },
   "build": {
     "appId": "com.anotherssh.app",
@@ -34,15 +40,24 @@
     },
     "mac": {
       "category": "public.app-category.developer-tools",
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "icon": "assets/icon.icns"
     },
     "win": {
-      "target": ["nsis", "portable"],
+      "target": [
+        "nsis",
+        "portable"
+      ],
       "icon": "assets/icon.ico"
     },
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "category": "Network",
       "icon": "assets/icon.png"
     }
