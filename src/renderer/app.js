@@ -80,10 +80,7 @@ class SSHClient {
     // 加载并显示版本号
     this.loadAppVersion();
     
-    // 延迟检查更新，不阻塞启动（3秒后执行）
-    setTimeout(() => {
-      this.checkForUpdates();
-    }, 3000);
+    // 不在启动时自动检查更新，只在用户点击版本号时手动检查
     
     // 监听来自主进程的数据
     window.electronAPI.ssh.onData((data) => {
@@ -469,7 +466,12 @@ class SSHClient {
     document.getElementById('terminalContainer').appendChild(wrapper);
 
     terminal.open(wrapper);
-    fitAddon.fit();
+    
+    // 延迟 fit 和 focus，确保 DOM 已渲染
+    setTimeout(() => {
+      fitAddon.fit();
+      terminal.focus();
+    }, 100);
 
     // 监听终端输入
     terminal.onData((data) => {
@@ -556,12 +558,14 @@ class SSHClient {
     // 更新状态栏
     this.updateStatusBar(sessionId);
 
-    // 重新调整终端大小
+    // 重新调整终端大小并聚焦
     const terminalData = this.terminals.get(sessionId);
     if (terminalData) {
       setTimeout(() => {
         terminalData.fitAddon.fit();
-      }, 0);
+        // 自动聚焦到终端
+        terminalData.terminal.focus();
+      }, 100);
     }
   }
 
