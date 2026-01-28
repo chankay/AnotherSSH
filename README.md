@@ -5,8 +5,17 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Electron](https://img.shields.io/badge/Electron-28-blue.svg)](https://www.electronjs.org/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](https://github.com)
+[![Release](https://img.shields.io/github/v/release/YOUR_USERNAME/anotherssh)](https://github.com/YOUR_USERNAME/anotherssh/releases)
 
 一个基于 Electron + Node.js 开发的现代化 SSH 客户端，提供直观的图形界面和强大的功能，让远程服务器管理变得简单高效。
+
+## 📥 下载
+
+访问 [Releases 页面](https://github.com/YOUR_USERNAME/anotherssh/releases) 下载最新版本：
+
+- **macOS**: `AnotherSSH-{version}-arm64.dmg` (Apple Silicon) 或 `AnotherSSH-{version}-x64.dmg` (Intel)
+- **Windows**: `AnotherSSH Setup {version}.exe` (安装版) 或 `AnotherSSH {version}.exe` (便携版)
+- **Linux**: `AnotherSSH-{version}.AppImage` 或 `anotherssh_{version}_amd64.deb`
 
 ## ✨ 功能特性
 
@@ -53,13 +62,15 @@
 - **ssh2-sftp-client** - SFTP 文件传输
 - **xterm.js** - 终端模拟器
 
-## 📦 安装依赖
+## 📦 开发者指南
+
+### 安装依赖
 
 ```bash
 npm install
 ```
 
-## 🔧 开发运行
+### 开发运行
 
 ```bash
 # 开发模式（带开发者工具）
@@ -69,7 +80,7 @@ npm run dev
 npm start
 ```
 
-## 📱 打包应用
+### 本地打包
 
 ```bash
 # 打包所有平台
@@ -84,6 +95,23 @@ npm run build:win
 # 仅打包 Linux
 npm run build:linux
 ```
+
+### 发布新版本
+
+查看 [RELEASE.md](RELEASE.md) 了解如何使用 GitHub Actions 自动发布。
+
+快速发布：
+```bash
+# 1. 更新 package.json 中的版本号
+# 2. 提交更改
+git commit -am "chore: bump version to x.x.x"
+
+# 3. 创建并推送标签
+git tag vx.x.x
+git push && git push origin vx.x.x
+```
+
+GitHub Actions 会自动构建并发布到 Releases。
 
 ## 📖 使用指南
 
