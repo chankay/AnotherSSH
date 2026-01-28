@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const SSHManager = require('./ssh-manager');
 const SessionStore = require('./session-store');
@@ -306,4 +306,82 @@ ipcMain.handle('webdav:startAutoSync', async (event, intervalMinutes) => {
 
 ipcMain.handle('webdav:stopAutoSync', async (event) => {
   return webdavSync.stopAutoSync();
+});
+
+
+// 检查更新
+ipcMain.handle('check-updates', async () => {
+  try {
+    const https = require('https');
+    
+    return new Promise((resolve, reject) => {
+      const options = {
+        hostname: 'api.github.com',
+        path: '/repos/chankay/anotherssh/releases/latest',
+        method: 'GET',
+        headers: {
+          'User-Agent': 'AnotherSSH'
+        }
+      };
+      
+      const req = https.request(options, (res) => {
+        let data = '';
+        
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+        
+        res.on('end', () => {
+          try {
+            const release = JSON.parse(data);
+            const latestVersion = release.tag_name.replace('v', '');
+            const currentVersion = app.getVersion();
+            
+            // 比较版本号
+            const hasUpdate = compareVersions(currentVersion, latestVersion) === 1;
+            
+            resolve({
+              hasUpdate,
+              latestVersion,
+              currentVersion,
+              downloadUrl: release.html_url,
+              releaseNotes: release.body
+            });
+          } catch (error) {
+            reject(error);
+          }
+        });
+      });
+      
+      req.on('error', (error) => {
+        reject(error);
+      });
+      
+      req.end();
+    });
+  } catch (error) {
+    console.error('Check update failed:', error);
+    return {
+      hasUpdate: false,
+      error: error.message
+    };
+  }
+});
+
+// 比较版本号
+function compareVersions(current, latest) {
+  const c = current.split('.').map(Number);
+  const l = latest.split('.').map(Number);
+  
+  for (let i = 0; i < 3; i++) {
+    if (l[i] > c[i]) return 1;  // 有新版本
+    if (l[i] < c[i]) return -1; // 当前版本更新
+  }
+  return 0; // 版本相同
+}
+
+// 打开外部链接
+ipcMain.handle('open-external', async (event, url) => {
+  await shell.openExternal(url);
+  return { success: true };
 });

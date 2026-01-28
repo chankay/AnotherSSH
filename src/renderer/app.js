@@ -48,7 +48,9 @@ if (!window.electronAPI) {
       getStatus: () => window.ipcRenderer.invoke('webdav:getStatus'),
       startAutoSync: (intervalMinutes) => window.ipcRenderer.invoke('webdav:startAutoSync', intervalMinutes),
       stopAutoSync: () => window.ipcRenderer.invoke('webdav:stopAutoSync')
-    }
+    },
+    checkUpdates: () => window.ipcRenderer.invoke('check-updates'),
+    openExternal: (url) => window.ipcRenderer.invoke('open-external', url)
   };
 }
 
@@ -73,6 +75,9 @@ class SSHClient {
   init() {
     this.setupEventListeners();
     this.loadSessions();
+    
+    // 检查更新
+    this.checkForUpdates();
     
     // 监听来自主进程的数据
     window.electronAPI.ssh.onData((data) => {
@@ -273,6 +278,11 @@ class SSHClient {
           }
         });
       }
+    });
+
+    // 点击版本号检查更新
+    document.getElementById('statusVersion').addEventListener('click', () => {
+      this.checkForUpdates(true);
     });
   }
 
@@ -2395,6 +2405,60 @@ class SSHClient {
   getAllSessions() {
     // 直接返回所有保存的会话
     return this.savedSessions || [];
+  }
+
+  // 检查更新
+  async checkForUpdates(manual = false) {
+    try {
+      // 如果不是手动检查，则检查上次检查时间，每天只检查一次
+      if (!manual) {
+        const lastCheck = localStorage.getItem('lastUpdateCheck');
+        const now = Date.now();
+        
+        if (lastCheck && now - parseInt(lastCheck) < 24 * 60 * 60 * 1000) {
+          return;
+        }
+      }
+      
+      // 手动检查时显示检查中状态
+      if (manual) {
+        this.showNotification('正在检查更新...', 'info');
+      }
+      
+      const updateInfo = await window.electronAPI.checkUpdates();
+      
+      if (updateInfo && updateInfo.hasUpdate) {
+        this.showUpdateNotification(updateInfo);
+        if (manual) {
+          this.showNotification(`发现新版本 v${updateInfo.latestVersion}`, 'success');
+        }
+      } else if (manual) {
+        // 手动检查时，如果没有更新则提示
+        this.showNotification('当前已是最新版本', 'success');
+      }
+      
+      localStorage.setItem('lastUpdateCheck', Date.now().toString());
+    } catch (error) {
+      console.error('Check updates failed:', error);
+      if (manual) {
+        this.showNotification('检查更新失败，请稍后重试', 'error');
+      }
+    }
+  }
+
+  // 显示更新提示
+  showUpdateNotification(updateInfo) {
+    const statusUpdate = document.getElementById('statusUpdate');
+    const statusUpdateText = document.getElementById('statusUpdateText');
+    
+    statusUpdateText.textContent = `🎉 发现新版本 v${updateInfo.latestVersion}`;
+    statusUpdate.style.display = 'inline-flex';
+    
+    // 点击打开下载页面
+    statusUpdate.style.cursor = 'pointer';
+    statusUpdate.onclick = () => {
+      window.electronAPI.openExternal(updateInfo.downloadUrl);
+    };
   }
 }
 

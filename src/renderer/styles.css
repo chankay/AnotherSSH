@@ -191,6 +191,27 @@ body {
   color: #666;
 }
 
+.status-update {
+  color: #4caf50;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.status-update:hover {
+  opacity: 0.8;
+}
+
+#statusVersion {
+  color: #888;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+#statusVersion:hover {
+  color: #aaa;
+}
+
 .btn-primary {
   background: #0e639c;
   color: white;
