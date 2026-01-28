@@ -30,6 +30,9 @@ jobs:
 
       - name: Build Electron app
         run: npm run build -- --publish never
+        env:
+          # 在 macOS 上构建时，同时构建 x64 和 arm64 架构
+          CSC_IDENTITY_AUTO_DISCOVERY: false
 
       - name: Upload artifacts (macOS)
         if: matrix.os == 'macos-latest'
@@ -38,9 +41,7 @@ jobs:
           name: macos-build
           path: |
             dist/*.dmg
-            dist/*.zip
             dist/*.dmg.blockmap
-            dist/*.zip.blockmap
 
       - name: Upload artifacts (Windows)
         if: matrix.os == 'windows-latest'
@@ -58,7 +59,6 @@ jobs:
           name: linux-build
           path: |
             dist/*.AppImage
-            dist/*.deb
             dist/*.AppImage.blockmap
 
   create-release:
