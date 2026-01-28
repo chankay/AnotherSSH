@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Electron](https://img.shields.io/badge/Electron-28-blue.svg)](https://www.electronjs.org/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](https://github.com)
-[![Release](https://img.shields.io/github/v/release/YOUR_USERNAME/anotherssh)](https://github.com/chankay/anotherssh/releases)
+[![Release](https://img.shields.io/github/v/release/chankay/anotherssh)](https://github.com/chankay/anotherssh/releases)
 
 一个基于 Electron + Node.js 开发的现代化 SSH 客户端，提供直观的图形界面和强大的功能，让远程服务器管理变得简单高效。
 
