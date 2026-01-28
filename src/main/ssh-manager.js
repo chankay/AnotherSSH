@@ -29,7 +29,7 @@ class SSHManager {
           this.sessions.set(sessionId, session);
 
           stream.on('data', (data) => {
-            onData(data.toString('utf-8'));
+            onData(data.toString());
           });
 
           stream.on('close', () => {
@@ -40,7 +40,7 @@ class SSHManager {
           });
 
           stream.stderr.on('data', (data) => {
-            onData(data.toString('utf-8'));
+            onData(data.toString());
           });
 
           resolve(sessionId);

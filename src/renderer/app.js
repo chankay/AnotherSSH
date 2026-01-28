@@ -450,7 +450,11 @@ class SSHClient {
       theme: {
         background: '#1e1e1e',
         foreground: '#d4d4d4'
-      }
+      },
+      allowProposedApi: true,
+      scrollback: 1000,
+      convertEol: false,
+      windowsMode: false
     });
 
     const fitAddon = new window.FitAddon();
@@ -636,7 +640,7 @@ class SSHClient {
     const { sessionId, data: output } = data;
     const terminalData = this.terminals.get(sessionId);
     
-    if (terminalData) {
+    if (terminalData && output) {
       terminalData.terminal.write(output);
     }
   }
