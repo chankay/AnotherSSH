@@ -596,11 +596,6 @@ class SSHClient {
 
           item.innerHTML = `
             <span>${session.name || session.username + '@' + session.host}</span>
-            <div class="session-actions">
-              <button class="connect-btn" data-id="${session.id}" title="连接 (双击)">连接</button>
-              <button class="edit-btn" data-id="${session.id}" title="编辑">编辑</button>
-              <button class="delete-btn" data-id="${session.id}" title="删除">删除</button>
-            </div>
           `;
 
           // 双击快速连接
@@ -608,25 +603,10 @@ class SSHClient {
             this.connectSavedSession(session);
           });
 
-          item.querySelector('.connect-btn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.connectSavedSession(session);
-          });
-
-          item.querySelector('.edit-btn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.editSession(session);
-          });
-
-          item.querySelector('.delete-btn').addEventListener('click', async (e) => {
-            e.stopPropagation();
-            this.showConfirmDialog(
-              '删除会话',
-              `确定删除会话 "${session.name}" 吗？`,
-              async () => {
-                await this.deleteSavedSession(session.id);
-              }
-            );
+          // 右键菜单
+          item.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            this.showSessionContextMenu(e, session);
           });
 
           sessionsDiv.appendChild(item);
@@ -789,6 +769,57 @@ class SSHClient {
 
     okBtn.addEventListener('click', handleOk);
     cancelBtn.addEventListener('click', handleCancel);
+  }
+
+  showSessionContextMenu(event, session) {
+    const menu = document.getElementById('sessionContextMenu');
+    
+    // 显示菜单
+    menu.style.display = 'block';
+    menu.style.left = event.pageX + 'px';
+    menu.style.top = event.pageY + 'px';
+
+    // 移除之前的事件监听器
+    const newMenu = menu.cloneNode(true);
+    menu.parentNode.replaceChild(newMenu, menu);
+
+    // 添加菜单项点击事件
+    newMenu.querySelectorAll('.context-menu-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const action = item.getAttribute('data-action');
+        newMenu.style.display = 'none';
+
+        switch(action) {
+          case 'connect':
+            this.connectSavedSession(session);
+            break;
+          case 'edit':
+            this.editSession(session);
+            break;
+          case 'delete':
+            this.showConfirmDialog(
+              '删除会话',
+              `确定删除会话 "${session.name}" 吗？`,
+              async () => {
+                await this.deleteSavedSession(session.id);
+              }
+            );
+            break;
+        }
+      });
+    });
+
+    // 点击其他地方关闭菜单
+    const closeMenu = (e) => {
+      if (!newMenu.contains(e.target)) {
+        newMenu.style.display = 'none';
+        document.removeEventListener('click', closeMenu);
+      }
+    };
+
+    setTimeout(() => {
+      document.addEventListener('click', closeMenu);
+    }, 0);
   }
 
   showAlert(message) {

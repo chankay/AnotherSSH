@@ -145,6 +145,14 @@
     </div>
   </div>
 
+  <!-- 会话右键菜单 -->
+  <div id="sessionContextMenu" class="context-menu" style="display: none;">
+    <div class="context-menu-item" data-action="connect">⚡ 连接</div>
+    <div class="context-menu-item" data-action="edit">✏️ 编辑</div>
+    <div class="context-menu-divider"></div>
+    <div class="context-menu-item context-menu-danger" data-action="delete">🗑️ 删除</div>
+  </div>
+
   <script>
     // 直接使用 require 加载本地模块
     const { Terminal } = require('xterm');
