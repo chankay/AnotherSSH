@@ -1,0 +1,1492 @@
+// Terminal、FitAddon、SearchAddon 已在 HTML 中加载
+
+// 等待 DOM 和依赖加载完成
+if (!window.ipcRenderer) {
+  console.error('ipcRenderer not loaded');
+}
+
+// 创建 electronAPI 对象（替代 preload）
+if (!window.electronAPI) {
+  window.electronAPI = {
+    ssh: {
+      connect: (config) => window.ipcRenderer.invoke('ssh:connect', config),
+      send: (sessionId, data) => window.ipcRenderer.invoke('ssh:send', { sessionId, data }),
+      resize: (sessionId, cols, rows) => window.ipcRenderer.invoke('ssh:resize', { sessionId, cols, rows }),
+      disconnect: (sessionId) => window.ipcRenderer.invoke('ssh:disconnect', sessionId),
+      onData: (callback) => window.ipcRenderer.on('ssh:data', (event, data) => callback(data))
+    },
+    session: {
+      save: (sessions) => window.ipcRenderer.invoke('session:save', sessions),
+      load: () => window.ipcRenderer.invoke('session:load'),
+      delete: (sessionId) => window.ipcRenderer.invoke('session:delete', sessionId),
+      export: () => window.ipcRenderer.invoke('session:export'),
+      import: () => window.ipcRenderer.invoke('session:import')
+    },
+    sftp: {
+      connect: (sessionId, config) => window.ipcRenderer.invoke('sftp:connect', { sessionId, config }),
+      list: (sessionId, remotePath) => window.ipcRenderer.invoke('sftp:list', { sessionId, remotePath }),
+      download: (sessionId, remotePath) => window.ipcRenderer.invoke('sftp:download', { sessionId, remotePath }),
+      upload: (sessionId, remotePath) => window.ipcRenderer.invoke('sftp:upload', { sessionId, remotePath }),
+      uploadFile: (sessionId, localPath, remotePath) => window.ipcRenderer.invoke('sftp:uploadFile', { sessionId, localPath, remotePath }),
+      mkdir: (sessionId, remotePath) => window.ipcRenderer.invoke('sftp:mkdir', { sessionId, remotePath }),
+      delete: (sessionId, remotePath) => window.ipcRenderer.invoke('sftp:delete', { sessionId, remotePath }),
+      rename: (sessionId, oldPath, newPath) => window.ipcRenderer.invoke('sftp:rename', { sessionId, oldPath, newPath }),
+      disconnect: (sessionId) => window.ipcRenderer.invoke('sftp:disconnect', sessionId),
+      cancelTransfer: (transferId) => window.ipcRenderer.invoke('sftp:cancelTransfer', transferId),
+      onProgress: (callback) => window.ipcRenderer.on('sftp:progress', (event, data) => callback(data))
+    }
+  };
+}
+
+
+class SSHClient {
+  constructor() {
+    this.terminals = new Map();
+    this.sftpSessions = new Map();
+    this.activeSessionId = null;
+    this.savedSessions = [];
+    this.sessionGroups = [];
+    this.collapsedGroups = new Set();
+    this.currentSftpPath = {};
+    this.editingSessionId = null;
+    this.searchQuery = '';
+    this.selectedFiles = new Set();
+    this.currentTransferId = null;
+    this.init();
+  }
+
+  init() {
+    this.setupEventListeners();
+    this.loadSessions();
+    
+    // 监听来自主进程的数据
+    window.electronAPI.ssh.onData((data) => {
+      this.handleSSHData(data);
+    });
+
+    // 监听 SFTP 进度
+    window.electronAPI.sftp.onProgress((data) => {
+      this.updateProgress(data);
+    });
+  }
+
+  updateProgress(data) {
+    const { sessionId, transferred, total, percent, transferId } = data;
+    
+    // 显示进度条
+    let progressBar = document.getElementById('progressBar');
+    if (!progressBar) {
+      progressBar = document.createElement('div');
+      progressBar.id = 'progressBar';
+      progressBar.className = 'progress-bar';
+      progressBar.innerHTML = `
+        <div class="progress-content">
+          <div class="progress-header">
+            <div class="progress-text">传输中...</div>
+            <button class="progress-cancel" id="progressCancelBtn">✕</button>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <div class="progress-info">
+            <span class="progress-percent" id="progressPercent">0%</span>
+            <span class="progress-size" id="progressSize">0 / 0</span>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(progressBar);
+
+      // 绑定取消按钮
+      document.getElementById('progressCancelBtn').addEventListener('click', () => {
+        this.cancelTransfer();
+      });
+    }
+
+    // 存储当前传输 ID
+    this.currentTransferId = transferId;
+
+    const progressFill = document.getElementById('progressFill');
+    const progressPercent = document.getElementById('progressPercent');
+    const progressSize = document.getElementById('progressSize');
+    
+    progressFill.style.width = percent + '%';
+    progressPercent.textContent = percent + '%';
+    progressSize.textContent = `${this.formatSize(transferred)} / ${this.formatSize(total)}`;
+
+    // 传输完成后隐藏进度条
+    if (parseFloat(percent) >= 100) {
+      setTimeout(() => {
+        if (progressBar) {
+          progressBar.remove();
+          this.currentTransferId = null;
+        }
+      }, 1000);
+    }
+  }
+
+  async cancelTransfer() {
+    if (!this.currentTransferId) return;
+
+    const result = await window.electronAPI.sftp.cancelTransfer(this.currentTransferId);
+    
+    if (result.success) {
+      this.showNotification('传输已取消', 'info');
+      const progressBar = document.getElementById('progressBar');
+      if (progressBar) {
+        progressBar.remove();
+      }
+      this.currentTransferId = null;
+    }
+  }
+
+  setupEventListeners() {
+    document.getElementById('newSessionBtn').addEventListener('click', () => {
+      this.showConnectDialog();
+    });
+
+    document.getElementById('newGroupBtn').addEventListener('click', () => {
+      this.createNewGroup();
+    });
+
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      this.exportConfig();
+    });
+
+    document.getElementById('importBtn').addEventListener('click', () => {
+      this.importConfig();
+    });
+
+    document.getElementById('cancelBtn').addEventListener('click', () => {
+      this.hideConnectDialog();
+    });
+
+    document.getElementById('authType').addEventListener('change', (e) => {
+      const isPassword = e.target.value === 'password';
+      document.getElementById('passwordGroup').style.display = isPassword ? 'block' : 'none';
+      document.getElementById('keyGroup').style.display = isPassword ? 'none' : 'block';
+    });
+
+    document.getElementById('connectForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.handleConnect();
+    });
+
+    // SFTP 事件监听
+    document.getElementById('sftpBackBtn').addEventListener('click', () => {
+      this.sftpNavigateUp();
+    });
+
+    document.getElementById('sftpRefreshBtn').addEventListener('click', () => {
+      this.sftpRefresh();
+    });
+
+    document.getElementById('sftpUploadBtn').addEventListener('click', () => {
+      this.sftpUpload();
+    });
+
+    document.getElementById('sftpMkdirBtn').addEventListener('click', () => {
+      this.sftpMkdir();
+    });
+
+    document.getElementById('sftpDownloadBtn').addEventListener('click', () => {
+      this.sftpDownloadSelected();
+    });
+
+    document.getElementById('sftpSelectAllBtn').addEventListener('click', () => {
+      this.sftpToggleSelectAll();
+    });
+
+    // 搜索功能
+    document.getElementById('sessionSearch').addEventListener('input', (e) => {
+      this.searchQuery = e.target.value.toLowerCase();
+      this.renderSessionList();
+    });
+
+    // 键盘快捷键
+    document.addEventListener('keydown', (e) => {
+      // Ctrl/Cmd + N: 新建连接
+      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+        e.preventDefault();
+        this.showConnectDialog();
+      }
+      // Ctrl/Cmd + F: 聚焦搜索
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        document.getElementById('sessionSearch').focus();
+      }
+      // ESC: 关闭对话框
+      if (e.key === 'Escape') {
+        const dialogs = document.querySelectorAll('.dialog');
+        dialogs.forEach(dialog => {
+          if (dialog.style.display === 'flex') {
+            dialog.style.display = 'none';
+          }
+        });
+      }
+    });
+  }
+
+  showConnectDialog() {
+    // 重置编辑模式
+    this.editingSessionId = null;
+    document.querySelector('#connectDialog h3').textContent = '新建 SSH 连接';
+    document.getElementById('connectSubmitBtn').textContent = '连接';
+    document.getElementById('saveSession').parentElement.style.display = 'block';
+    
+    // 更新分组下拉列表
+    const groupSelect = document.getElementById('sessionGroup');
+    groupSelect.innerHTML = '<option value="">默认分组</option>';
+    this.sessionGroups.forEach(group => {
+      const option = document.createElement('option');
+      option.value = group;
+      option.textContent = group;
+      groupSelect.appendChild(option);
+    });
+
+    document.getElementById('connectDialog').style.display = 'flex';
+  }
+
+  hideConnectDialog() {
+    document.getElementById('connectDialog').style.display = 'none';
+    document.getElementById('connectForm').reset();
+  }
+
+  async handleConnect() {
+    const config = {
+      host: document.getElementById('host').value,
+      port: parseInt(document.getElementById('port').value),
+      username: document.getElementById('username').value,
+      name: document.getElementById('sessionName').value || `${document.getElementById('username').value}@${document.getElementById('host').value}`,
+      group: document.getElementById('sessionGroup').value
+    };
+
+    const authType = document.getElementById('authType').value;
+    if (authType === 'password') {
+      config.password = document.getElementById('password').value;
+    } else {
+      config.privateKey = document.getElementById('privateKey').value;
+    }
+
+    const shouldSave = document.getElementById('saveSession').checked;
+
+    // 如果是编辑模式，更新现有会话
+    if (this.editingSessionId) {
+      const index = this.savedSessions.findIndex(s => s.id === this.editingSessionId);
+      if (index > -1) {
+        config.id = this.editingSessionId;
+        this.savedSessions[index] = config;
+        
+        // 如果是新分组，添加到分组列表
+        if (config.group && !this.sessionGroups.includes(config.group)) {
+          this.sessionGroups.push(config.group);
+        }
+        
+        await window.electronAPI.session.save(this.savedSessions);
+        this.renderSessionList();
+        this.hideConnectDialog();
+        this.showAlert('会话已更新');
+        return;
+      }
+    }
+
+    try {
+      const result = await window.electronAPI.ssh.connect(config);
+      
+      if (result.success) {
+        // 保存会话配置
+        if (shouldSave) {
+          config.id = Date.now().toString();
+          this.savedSessions.push(config);
+          
+          // 如果是新分组，添加到分组列表
+          if (config.group && !this.sessionGroups.includes(config.group)) {
+            this.sessionGroups.push(config.group);
+          }
+          
+          await window.electronAPI.session.save(this.savedSessions);
+          this.renderSessionList();
+        }
+
+        this.createTerminal(result.sessionId, config);
+        this.hideConnectDialog();
+      } else {
+        alert('连接失败: ' + result.error);
+      }
+    } catch (error) {
+      alert('连接错误: ' + error.message);
+    }
+  }
+
+  createTerminal(sessionId, config) {
+    const terminal = new window.Terminal({
+      cursorBlink: true,
+      fontSize: 14,
+      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      theme: {
+        background: '#1e1e1e',
+        foreground: '#d4d4d4'
+      }
+    });
+
+    const fitAddon = new window.FitAddon();
+    const searchAddon = new window.SearchAddon();
+    
+    terminal.loadAddon(fitAddon);
+    terminal.loadAddon(searchAddon);
+
+    // 创建终端容器
+    const wrapper = document.createElement('div');
+    wrapper.className = 'terminal-wrapper';
+    wrapper.id = `terminal-${sessionId}`;
+    document.getElementById('terminalContainer').appendChild(wrapper);
+
+    terminal.open(wrapper);
+    fitAddon.fit();
+
+    // 监听终端输入
+    terminal.onData((data) => {
+      window.electronAPI.ssh.send(sessionId, data);
+    });
+
+    // 监听窗口大小变化
+    window.addEventListener('resize', () => {
+      fitAddon.fit();
+      window.electronAPI.ssh.resize(sessionId, terminal.cols, terminal.rows);
+    });
+
+    // 初始化终端大小
+    window.electronAPI.ssh.resize(sessionId, terminal.cols, terminal.rows);
+
+    this.terminals.set(sessionId, {
+      terminal,
+      fitAddon,
+      searchAddon,
+      config
+    });
+
+    // 创建标签页
+    this.createTab(sessionId, config);
+    this.switchToSession(sessionId);
+  }
+
+  createTab(sessionId, config) {
+    const tabsContainer = document.getElementById('tabs');
+    const tab = document.createElement('div');
+    tab.className = 'tab';
+    tab.id = `tab-${sessionId}`;
+    tab.innerHTML = `
+      <span>${config.name || config.username + '@' + config.host}</span>
+      <button class="tab-sftp-btn" data-session="${sessionId}" title="打开 SFTP">📁</button>
+      <span class="tab-close" data-session="${sessionId}">✕</span>
+    `;
+
+    tab.addEventListener('click', (e) => {
+      if (!e.target.classList.contains('tab-close') && !e.target.classList.contains('tab-sftp-btn')) {
+        this.switchToSession(sessionId);
+      }
+    });
+
+    // SFTP 按钮
+    tab.querySelector('.tab-sftp-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.openSFTP(sessionId, config);
+    });
+
+    tab.querySelector('.tab-close').addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.closeSession(sessionId);
+    });
+
+    tabsContainer.appendChild(tab);
+  }
+
+  switchToSession(sessionId) {
+    // 隐藏所有终端
+    document.querySelectorAll('.terminal-wrapper').forEach(el => {
+      el.classList.remove('active');
+    });
+
+    // 取消所有标签的激活状态
+    document.querySelectorAll('.tab').forEach(el => {
+      el.classList.remove('active');
+    });
+
+    // 隐藏 SFTP 容器，显示终端容器
+    document.getElementById('sftpContainer').style.display = 'none';
+    document.getElementById('terminalContainer').style.display = 'block';
+
+    // 激活选中的终端和标签
+    const terminalWrapper = document.getElementById(`terminal-${sessionId}`);
+    const tab = document.getElementById(`tab-${sessionId}`);
+    
+    if (terminalWrapper) terminalWrapper.classList.add('active');
+    if (tab) tab.classList.add('active');
+
+    this.activeSessionId = sessionId;
+
+    // 重新调整终端大小
+    const terminalData = this.terminals.get(sessionId);
+    if (terminalData) {
+      setTimeout(() => {
+        terminalData.fitAddon.fit();
+      }, 0);
+    }
+  }
+
+  async closeSession(sessionId) {
+    await window.electronAPI.ssh.disconnect(sessionId);
+    
+    const terminalData = this.terminals.get(sessionId);
+    if (terminalData) {
+      terminalData.terminal.dispose();
+      this.terminals.delete(sessionId);
+    }
+
+    const terminalWrapper = document.getElementById(`terminal-${sessionId}`);
+    const tab = document.getElementById(`tab-${sessionId}`);
+    
+    if (terminalWrapper) terminalWrapper.remove();
+    if (tab) tab.remove();
+
+    // 如果关闭的是当前会话，切换到其他会话
+    if (this.activeSessionId === sessionId) {
+      const remainingSessions = Array.from(this.terminals.keys());
+      if (remainingSessions.length > 0) {
+        this.switchToSession(remainingSessions[0]);
+      } else {
+        this.activeSessionId = null;
+      }
+    }
+  }
+
+  handleSSHData(data) {
+    const { sessionId, data: output } = data;
+    const terminalData = this.terminals.get(sessionId);
+    
+    if (terminalData) {
+      terminalData.terminal.write(output);
+    }
+  }
+
+  async loadSessions() {
+    const result = await window.electronAPI.session.load();
+    if (result.success && result.sessions) {
+      this.savedSessions = result.sessions;
+      
+      // 提取所有分组
+      this.sessionGroups = [...new Set(this.savedSessions
+        .map(s => s.group)
+        .filter(g => g))];
+      
+      this.renderSessionList();
+    }
+  }
+
+  renderSessionList() {
+    const sessionList = document.getElementById('sessionList');
+    sessionList.innerHTML = '';
+
+    // 按分组组织会话
+    const groupedSessions = {};
+    
+    // 初始化所有分组（包括空分组）
+    this.sessionGroups.forEach(group => {
+      groupedSessions[group] = [];
+    });
+    
+    // 添加默认分组
+    groupedSessions['默认分组'] = [];
+    
+    // 分配会话到分组，并应用搜索过滤
+    this.savedSessions.forEach(session => {
+      // 搜索过滤
+      if (this.searchQuery) {
+        const searchText = `${session.name} ${session.host} ${session.username} ${session.group}`.toLowerCase();
+        if (!searchText.includes(this.searchQuery)) {
+          return;
+        }
+      }
+
+      const group = session.group || '默认分组';
+      if (!groupedSessions[group]) {
+        groupedSessions[group] = [];
+      }
+      groupedSessions[group].push(session);
+    });
+
+    // 渲染每个分组
+    Object.keys(groupedSessions).sort().forEach(groupName => {
+      const sessions = groupedSessions[groupName];
+      
+      // 如果搜索时分组为空，跳过
+      if (this.searchQuery && sessions.length === 0) {
+        return;
+      }
+
+      const isCollapsed = this.collapsedGroups.has(groupName);
+      
+      const groupDiv = document.createElement('div');
+      groupDiv.className = 'session-group';
+      
+      const groupHeader = document.createElement('div');
+      groupHeader.className = 'group-header';
+      groupHeader.innerHTML = `
+        <div class="group-title">
+          <span class="group-toggle ${isCollapsed ? 'collapsed' : ''}">▼</span>
+          <span class="group-name">${groupName}</span>
+          <span class="group-count">(${sessions.length})</span>
+        </div>
+        <div class="group-actions">
+          ${groupName !== '默认分组' ? '<button class="rename-group-btn">重命名</button>' : ''}
+          ${groupName !== '默认分组' ? '<button class="delete-group-btn">删除</button>' : ''}
+        </div>
+      `;
+
+      // 切换折叠状态
+      groupHeader.addEventListener('click', (e) => {
+        if (e.target.closest('.group-actions')) return;
+        
+        if (this.collapsedGroups.has(groupName)) {
+          this.collapsedGroups.delete(groupName);
+        } else {
+          this.collapsedGroups.add(groupName);
+        }
+        this.renderSessionList();
+      });
+
+      // 重命名分组
+      const renameBtn = groupHeader.querySelector('.rename-group-btn');
+      if (renameBtn) {
+        renameBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.renameGroup(groupName);
+        });
+      }
+
+      // 删除分组
+      const deleteBtn = groupHeader.querySelector('.delete-group-btn');
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.deleteGroup(groupName);
+        });
+      }
+
+      groupDiv.appendChild(groupHeader);
+
+      // 会话列表
+      const sessionsDiv = document.createElement('div');
+      sessionsDiv.className = `group-sessions ${isCollapsed ? 'collapsed' : ''}`;
+      
+      if (sessions.length === 0) {
+        // 显示空状态
+        const emptyDiv = document.createElement('div');
+        emptyDiv.className = 'empty-group';
+        emptyDiv.textContent = '暂无会话';
+        sessionsDiv.appendChild(emptyDiv);
+      } else {
+        sessions.forEach(session => {
+          const item = document.createElement('div');
+          item.className = 'session-item';
+          
+          // 高亮搜索结果
+          if (this.searchQuery) {
+            item.classList.add('highlight');
+          }
+
+          item.innerHTML = `
+            <span>${session.name || session.username + '@' + session.host}</span>
+            <div class="session-actions">
+              <button class="connect-btn" data-id="${session.id}" title="连接 (双击)">连接</button>
+              <button class="edit-btn" data-id="${session.id}" title="编辑">编辑</button>
+              <button class="delete-btn" data-id="${session.id}" title="删除">删除</button>
+            </div>
+          `;
+
+          // 双击快速连接
+          item.addEventListener('dblclick', () => {
+            this.connectSavedSession(session);
+          });
+
+          item.querySelector('.connect-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.connectSavedSession(session);
+          });
+
+          item.querySelector('.edit-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.editSession(session);
+          });
+
+          item.querySelector('.delete-btn').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            this.showConfirmDialog(
+              '删除会话',
+              `确定删除会话 "${session.name}" 吗？`,
+              async () => {
+                await this.deleteSavedSession(session.id);
+              }
+            );
+          });
+
+          sessionsDiv.appendChild(item);
+        });
+      }
+
+      groupDiv.appendChild(sessionsDiv);
+      sessionList.appendChild(groupDiv);
+    });
+  }
+
+  createNewGroup() {
+    this.showInputDialog('新建分组', '请输入分组名称:', '', (groupName) => {
+      if (!groupName) return;
+      
+      if (this.sessionGroups.includes(groupName)) {
+        this.showAlert('分组已存在');
+        return;
+      }
+
+      this.sessionGroups.push(groupName);
+      this.renderSessionList();
+    });
+  }
+
+  async renameGroup(oldName) {
+    this.showInputDialog('重命名分组', '请输入新的分组名称:', oldName, async (newName) => {
+      if (!newName || newName === oldName) return;
+
+      if (this.sessionGroups.includes(newName)) {
+        this.showAlert('分组名称已存在');
+        return;
+      }
+
+      // 更新所有会话的分组名
+      this.savedSessions.forEach(session => {
+        if (session.group === oldName) {
+          session.group = newName;
+        }
+      });
+
+      // 更新分组列表
+      const index = this.sessionGroups.indexOf(oldName);
+      if (index > -1) {
+        this.sessionGroups[index] = newName;
+      }
+
+      await window.electronAPI.session.save(this.savedSessions);
+      this.renderSessionList();
+    });
+  }
+
+  async deleteGroup(groupName) {
+    const sessions = this.savedSessions.filter(s => s.group === groupName);
+    
+    if (sessions.length > 0) {
+      this.showConfirmDialog(
+        '删除分组',
+        `分组 "${groupName}" 中有 ${sessions.length} 个会话。\n\n点击"确定"将会话移至默认分组`,
+        async () => {
+          // 将会话移至默认分组
+          this.savedSessions.forEach(session => {
+            if (session.group === groupName) {
+              session.group = '';
+            }
+          });
+
+          // 删除分组
+          const index = this.sessionGroups.indexOf(groupName);
+          if (index > -1) {
+            this.sessionGroups.splice(index, 1);
+          }
+
+          await window.electronAPI.session.save(this.savedSessions);
+          this.renderSessionList();
+        }
+      );
+    } else {
+      // 直接删除空分组
+      const index = this.sessionGroups.indexOf(groupName);
+      if (index > -1) {
+        this.sessionGroups.splice(index, 1);
+      }
+      this.renderSessionList();
+    }
+  }
+
+  // 自定义对话框方法
+  showInputDialog(title, message, defaultValue, callback) {
+    const dialog = document.getElementById('inputDialog');
+    const titleEl = document.getElementById('inputDialogTitle');
+    const inputEl = document.getElementById('inputDialogValue');
+    const okBtn = document.getElementById('inputDialogOk');
+    const cancelBtn = document.getElementById('inputDialogCancel');
+
+    titleEl.textContent = title;
+    inputEl.value = defaultValue;
+    inputEl.placeholder = message;
+    dialog.style.display = 'flex';
+    
+    setTimeout(() => inputEl.focus(), 100);
+
+    const handleOk = () => {
+      const value = inputEl.value.trim();
+      dialog.style.display = 'none';
+      cleanup();
+      callback(value);
+    };
+
+    const handleCancel = () => {
+      dialog.style.display = 'none';
+      cleanup();
+    };
+
+    const handleKeyPress = (e) => {
+      if (e.key === 'Enter') {
+        handleOk();
+      } else if (e.key === 'Escape') {
+        handleCancel();
+      }
+    };
+
+    const cleanup = () => {
+      okBtn.removeEventListener('click', handleOk);
+      cancelBtn.removeEventListener('click', handleCancel);
+      inputEl.removeEventListener('keypress', handleKeyPress);
+    };
+
+    okBtn.addEventListener('click', handleOk);
+    cancelBtn.addEventListener('click', handleCancel);
+    inputEl.addEventListener('keypress', handleKeyPress);
+  }
+
+  showConfirmDialog(title, message, callback) {
+    const dialog = document.getElementById('confirmDialog');
+    const titleEl = document.getElementById('confirmDialogTitle');
+    const messageEl = document.getElementById('confirmDialogMessage');
+    const okBtn = document.getElementById('confirmDialogOk');
+    const cancelBtn = document.getElementById('confirmDialogCancel');
+
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+    dialog.style.display = 'flex';
+
+    const handleOk = () => {
+      dialog.style.display = 'none';
+      cleanup();
+      callback();
+    };
+
+    const handleCancel = () => {
+      dialog.style.display = 'none';
+      cleanup();
+    };
+
+    const cleanup = () => {
+      okBtn.removeEventListener('click', handleOk);
+      cancelBtn.removeEventListener('click', handleCancel);
+    };
+
+    okBtn.addEventListener('click', handleOk);
+    cancelBtn.addEventListener('click', handleCancel);
+  }
+
+  showAlert(message) {
+    // 使用 Electron 的原生对话框
+    alert(message);
+  }
+
+  // 导出配置
+  async exportConfig() {
+    try {
+      const result = await window.electronAPI.session.export();
+      
+      if (result.success) {
+        this.showAlert(`配置已导出到:\n${result.filePath}`);
+      } else {
+        this.showAlert('导出失败: ' + result.error);
+      }
+    } catch (error) {
+      this.showAlert('导出错误: ' + error.message);
+    }
+  }
+
+  // 导入配置
+  async importConfig() {
+    this.showConfirmDialog(
+      '导入配置',
+      '导入配置将会覆盖当前所有会话和分组，是否继续？',
+      async () => {
+        try {
+          const result = await window.electronAPI.session.import();
+          
+          if (result.success) {
+            // 重新加载会话
+            await this.loadSessions();
+            this.showNotification(`成功导入 ${result.count} 个会话`, 'success');
+          } else if (result.error !== 'User canceled') {
+            this.showNotification('导入失败: ' + result.error, 'error');
+          }
+        } catch (error) {
+          this.showNotification('导入错误: ' + error.message, 'error');
+        }
+      }
+    );
+  }
+
+  // 通知提示
+  showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+      notification.style.animation = 'slideInRight 0.3s ease-out reverse';
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
+  }
+
+  // SFTP 批量下载选中文件
+  async sftpDownloadSelected() {
+    if (this.selectedFiles.size === 0) {
+      this.showNotification('请先选择要下载的文件', 'info');
+      return;
+    }
+
+    if (!this.activeSessionId || !this.activeSessionId.startsWith('sftp-')) return;
+
+    const session = this.sftpSessions.get(this.activeSessionId);
+    if (!session) return;
+
+    this.showNotification(`准备下载 ${this.selectedFiles.size} 个文件...`, 'info');
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const fileName of this.selectedFiles) {
+      const remotePath = this.currentSftpPath[this.activeSessionId] === '/' 
+        ? `/${fileName}` 
+        : `${this.currentSftpPath[this.activeSessionId]}/${fileName}`;
+
+      const result = await window.electronAPI.sftp.download(session.sessionId, remotePath);
+      
+      if (result.success) {
+        successCount++;
+      } else if (result.error !== 'User canceled') {
+        failCount++;
+      }
+    }
+
+    if (successCount > 0) {
+      this.showNotification(`成功下载 ${successCount} 个文件`, 'success');
+    }
+    if (failCount > 0) {
+      this.showNotification(`${failCount} 个文件下载失败`, 'error');
+    }
+
+    // 清除选择
+    this.selectedFiles.clear();
+    this.updateSelectionCount();
+    this.sftpRefresh();
+  }
+
+  // 全选/取消全选
+  sftpToggleSelectAll() {
+    const checkboxes = document.querySelectorAll('.file-checkbox');
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+
+    checkboxes.forEach(cb => {
+      cb.checked = !allChecked;
+      const fileName = cb.dataset.filename;
+      const fileItem = cb.closest('.file-item');
+      
+      if (!allChecked) {
+        this.selectedFiles.add(fileName);
+        fileItem.classList.add('selected');
+      } else {
+        this.selectedFiles.delete(fileName);
+        fileItem.classList.remove('selected');
+      }
+    });
+
+    this.updateSelectionCount();
+  }
+
+  async connectSavedSession(config) {
+    try {
+      // 显示连接状态
+      this.showNotification('正在连接...', 'info');
+      
+      const result = await window.electronAPI.ssh.connect(config);
+      
+      if (result.success) {
+        this.createTerminal(result.sessionId, config);
+        this.showNotification('连接成功', 'success');
+      } else {
+        this.showNotification('连接失败: ' + result.error, 'error');
+      }
+    } catch (error) {
+      this.showNotification('连接错误: ' + error.message, 'error');
+    }
+  }
+
+  async deleteSavedSession(sessionId) {
+    this.savedSessions = this.savedSessions.filter(s => s.id !== sessionId);
+    await window.electronAPI.session.save(this.savedSessions);
+    this.renderSessionList();
+  }
+
+  editSession(session) {
+    // 填充表单
+    document.getElementById('host').value = session.host;
+    document.getElementById('port').value = session.port || 22;
+    document.getElementById('username').value = session.username;
+    document.getElementById('sessionName').value = session.name || '';
+    
+    // 设置认证方式
+    const authType = session.password ? 'password' : 'key';
+    document.getElementById('authType').value = authType;
+    
+    if (authType === 'password') {
+      document.getElementById('password').value = session.password || '';
+      document.getElementById('passwordGroup').style.display = 'block';
+      document.getElementById('keyGroup').style.display = 'none';
+    } else {
+      document.getElementById('privateKey').value = session.privateKey || '';
+      document.getElementById('passwordGroup').style.display = 'none';
+      document.getElementById('keyGroup').style.display = 'block';
+    }
+
+    // 设置分组
+    const groupSelect = document.getElementById('sessionGroup');
+    groupSelect.innerHTML = '<option value="">默认分组</option>';
+    this.sessionGroups.forEach(group => {
+      const option = document.createElement('option');
+      option.value = group;
+      option.textContent = group;
+      if (group === session.group) {
+        option.selected = true;
+      }
+      groupSelect.appendChild(option);
+    });
+
+    // 隐藏"保存此会话配置"选项（编辑模式下自动保存）
+    document.getElementById('saveSession').parentElement.style.display = 'none';
+    document.getElementById('saveSession').checked = true;
+
+    // 显示对话框，标记为编辑模式
+    this.editingSessionId = session.id;
+    document.querySelector('#connectDialog h3').textContent = '编辑 SSH 连接';
+    document.getElementById('connectSubmitBtn').textContent = '保存';
+    document.getElementById('connectDialog').style.display = 'flex';
+  }
+
+  // SFTP 功能
+  async openSFTP(sessionId, config) {
+    try {
+      // 连接 SFTP
+      const result = await window.electronAPI.sftp.connect(sessionId, config);
+      
+      if (!result.success) {
+        alert('SFTP 连接失败: ' + result.error);
+        return;
+      }
+
+      // 创建 SFTP 标签
+      const sftpSessionId = `sftp-${sessionId}`;
+      this.sftpSessions.set(sftpSessionId, { sessionId, config });
+      this.currentSftpPath[sftpSessionId] = '/';
+
+      this.createSFTPTab(sftpSessionId, config);
+      this.switchToSFTP(sftpSessionId);
+      this.sftpList(sftpSessionId, '/');
+    } catch (error) {
+      alert('SFTP 错误: ' + error.message);
+    }
+  }
+
+  createSFTPTab(sftpSessionId, config) {
+    const tabsContainer = document.getElementById('tabs');
+    const tab = document.createElement('div');
+    tab.className = 'tab';
+    tab.id = `tab-${sftpSessionId}`;
+    tab.innerHTML = `
+      <span>${config.name || config.username + '@' + config.host}</span>
+      <span class="tab-sftp">SFTP</span>
+      <span class="tab-close" data-session="${sftpSessionId}">✕</span>
+    `;
+
+    tab.addEventListener('click', (e) => {
+      if (!e.target.classList.contains('tab-close')) {
+        this.switchToSFTP(sftpSessionId);
+      }
+    });
+
+    tab.querySelector('.tab-close').addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await this.closeSFTP(sftpSessionId);
+    });
+
+    tabsContainer.appendChild(tab);
+  }
+
+  switchToSFTP(sftpSessionId) {
+    // 隐藏所有终端
+    document.querySelectorAll('.terminal-wrapper').forEach(el => {
+      el.classList.remove('active');
+    });
+
+    // 取消所有标签的激活状态
+    document.querySelectorAll('.tab').forEach(el => {
+      el.classList.remove('active');
+    });
+
+    // 显示 SFTP 容器
+    document.getElementById('terminalContainer').style.display = 'none';
+    document.getElementById('sftpContainer').style.display = 'flex';
+
+    // 激活标签
+    const tab = document.getElementById(`tab-${sftpSessionId}`);
+    if (tab) tab.classList.add('active');
+
+    this.activeSessionId = sftpSessionId;
+  }
+
+  async sftpList(sftpSessionId, remotePath) {
+    const session = this.sftpSessions.get(sftpSessionId);
+    if (!session) return;
+
+    // 显示加载状态
+    const fileList = document.getElementById('sftpFileList');
+    fileList.innerHTML = '<div class="loading">加载中...</div>';
+
+    const result = await window.electronAPI.sftp.list(session.sessionId, remotePath);
+    
+    if (result.success) {
+      this.currentSftpPath[sftpSessionId] = remotePath;
+      document.getElementById('sftpPath').value = remotePath;
+      
+      // 清除选择
+      this.selectedFiles.clear();
+      this.updateSelectionCount();
+      
+      this.renderFileList(sftpSessionId, result.files);
+    } else {
+      fileList.innerHTML = `<div class="error-message">获取文件列表失败: ${result.error}</div>`;
+    }
+  }
+
+  renderFileList(sftpSessionId, files) {
+    const fileList = document.getElementById('sftpFileList');
+    
+    // 添加淡入动画
+    fileList.style.opacity = '0';
+    fileList.innerHTML = '';
+
+    // 排序：文件夹在前
+    files.sort((a, b) => {
+      if (a.type === 'd' && b.type !== 'd') return -1;
+      if (a.type !== 'd' && b.type === 'd') return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    files.forEach(file => {
+      const item = document.createElement('div');
+      item.className = 'file-item';
+      item.dataset.fileName = file.name;
+      item.dataset.fileType = file.type;
+      
+      const icon = file.type === 'd' ? '📁' : '📄';
+      const size = file.type === 'd' ? '' : this.formatSize(file.size);
+      const date = new Date(file.modifyTime).toLocaleString();
+
+      item.innerHTML = `
+        <input type="checkbox" class="file-checkbox" data-filename="${file.name}">
+        <span class="file-icon">${icon}</span>
+        <span class="file-name">${file.name}</span>
+        <span class="file-size">${size}</span>
+        <span class="file-date">${date}</span>
+        <div class="file-actions">
+          ${file.type !== 'd' ? '<button class="download-btn">下载</button>' : ''}
+          <button class="rename-btn">重命名</button>
+          <button class="delete-btn">删除</button>
+        </div>
+      `;
+
+      // 复选框选择
+      const checkbox = item.querySelector('.file-checkbox');
+      checkbox.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (checkbox.checked) {
+          this.selectedFiles.add(file.name);
+          item.classList.add('selected');
+        } else {
+          this.selectedFiles.delete(file.name);
+          item.classList.remove('selected');
+        }
+        this.updateSelectionCount();
+      });
+
+      // 双击进入文件夹或下载文件
+      item.addEventListener('dblclick', () => {
+        if (file.type === 'd') {
+          const newPath = this.currentSftpPath[sftpSessionId] === '/' 
+            ? `/${file.name}` 
+            : `${this.currentSftpPath[sftpSessionId]}/${file.name}`;
+          this.sftpList(sftpSessionId, newPath);
+        } else {
+          this.sftpDownload(sftpSessionId, file.name);
+        }
+      });
+
+      // 右键菜单
+      item.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        this.showFileContextMenu(e, sftpSessionId, file);
+      });
+
+      // 下载按钮
+      const downloadBtn = item.querySelector('.download-btn');
+      if (downloadBtn) {
+        downloadBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.sftpDownload(sftpSessionId, file.name);
+        });
+      }
+
+      // 重命名按钮
+      item.querySelector('.rename-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.sftpRename(sftpSessionId, file.name);
+      });
+
+      // 删除按钮
+      item.querySelector('.delete-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.sftpDelete(sftpSessionId, file.name);
+      });
+
+      fileList.appendChild(item);
+    });
+
+    // 启用拖拽上传
+    this.enableDragUpload(fileList, sftpSessionId);
+
+    // 淡入动画
+    setTimeout(() => {
+      fileList.style.opacity = '1';
+    }, 50);
+  }
+
+  updateSelectionCount() {
+    const count = this.selectedFiles.size;
+    const downloadBtn = document.getElementById('sftpDownloadBtn');
+    if (downloadBtn) {
+      downloadBtn.textContent = count > 0 ? `下载选中 (${count})` : '下载选中';
+      downloadBtn.disabled = count === 0;
+    }
+  }
+
+  enableDragUpload(fileList, sftpSessionId) {
+    // 移除旧的事件监听器
+    fileList.ondragover = null;
+    fileList.ondragleave = null;
+    fileList.ondrop = null;
+
+    fileList.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      fileList.classList.add('drag-over');
+    });
+
+    fileList.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.target === fileList) {
+        fileList.classList.remove('drag-over');
+      }
+    });
+
+    fileList.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      fileList.classList.remove('drag-over');
+
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length === 0) return;
+
+      const session = this.sftpSessions.get(sftpSessionId);
+      if (!session) return;
+
+      this.showNotification(`准备上传 ${files.length} 个文件...`, 'info');
+
+      let successCount = 0;
+      let failCount = 0;
+      let cancelCount = 0;
+
+      for (const file of files) {
+        const remotePath = this.currentSftpPath[sftpSessionId] === '/' 
+          ? `/${file.name}` 
+          : `${this.currentSftpPath[sftpSessionId]}/${file.name}`;
+
+        try {
+          const result = await this.uploadLocalFile(session.sessionId, file.path, remotePath);
+          
+          if (result.success) {
+            successCount++;
+          } else if (result.cancelled) {
+            cancelCount++;
+            // 用户取消了，停止后续上传
+            break;
+          } else {
+            failCount++;
+            this.showNotification(`上传 ${file.name} 失败: ${result.error}`, 'error');
+          }
+        } catch (error) {
+          failCount++;
+          this.showNotification(`上传 ${file.name} 错误: ${error.message}`, 'error');
+        }
+      }
+
+      // 显示汇总信息
+      if (successCount > 0) {
+        this.showNotification(`成功上传 ${successCount} 个文件`, 'success');
+      }
+      if (cancelCount > 0) {
+        this.showNotification(`取消了 ${cancelCount} 个文件的上传`, 'info');
+      }
+      if (failCount > 0) {
+        this.showNotification(`${failCount} 个文件上传失败`, 'error');
+      }
+
+      this.sftpRefresh();
+    });
+  }
+
+  async uploadLocalFile(sessionId, localPath, remotePath) {
+    return await window.electronAPI.sftp.uploadFile(sessionId, localPath, remotePath);
+  }
+
+  showFileContextMenu(e, sftpSessionId, file) {
+    // 移除已存在的菜单
+    const existingMenu = document.querySelector('.context-menu');
+    if (existingMenu) {
+      existingMenu.remove();
+    }
+
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+    menu.style.left = e.pageX + 'px';
+    menu.style.top = e.pageY + 'px';
+
+    const menuItems = [];
+
+    if (file.type !== 'd') {
+      menuItems.push({ label: '下载', action: () => this.sftpDownload(sftpSessionId, file.name) });
+    } else {
+      menuItems.push({ label: '打开', action: () => {
+        const newPath = this.currentSftpPath[sftpSessionId] === '/' 
+          ? `/${file.name}` 
+          : `${this.currentSftpPath[sftpSessionId]}/${file.name}`;
+        this.sftpList(sftpSessionId, newPath);
+      }});
+    }
+
+    menuItems.push({ label: '重命名', action: () => this.sftpRename(sftpSessionId, file.name) });
+    menuItems.push({ divider: true });
+    menuItems.push({ label: '删除', action: () => this.sftpDelete(sftpSessionId, file.name) });
+
+    menuItems.forEach(item => {
+      if (item.divider) {
+        const divider = document.createElement('div');
+        divider.className = 'context-menu-divider';
+        menu.appendChild(divider);
+      } else {
+        const menuItem = document.createElement('div');
+        menuItem.className = 'context-menu-item';
+        menuItem.textContent = item.label;
+        menuItem.addEventListener('click', () => {
+          item.action();
+          menu.remove();
+        });
+        menu.appendChild(menuItem);
+      }
+    });
+
+    document.body.appendChild(menu);
+
+    // 点击其他地方关闭菜单
+    const closeMenu = (e) => {
+      if (!menu.contains(e.target)) {
+        menu.remove();
+        document.removeEventListener('click', closeMenu);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closeMenu), 0);
+  }
+
+  async sftpDownload(sftpSessionId, fileName) {
+    const session = this.sftpSessions.get(sftpSessionId);
+    if (!session) return;
+
+    const remotePath = this.currentSftpPath[sftpSessionId] === '/' 
+      ? `/${fileName}` 
+      : `${this.currentSftpPath[sftpSessionId]}/${fileName}`;
+
+    const result = await window.electronAPI.sftp.download(session.sessionId, remotePath);
+    
+    if (result.success) {
+      this.showNotification('下载完成', 'success');
+    } else if (result.cancelled) {
+      // 用户取消，不显示错误
+    } else if (result.error !== 'User canceled') {
+      this.showNotification('下载失败: ' + result.error, 'error');
+    }
+  }
+
+  async sftpUpload() {
+    if (!this.activeSessionId || !this.activeSessionId.startsWith('sftp-')) return;
+
+    const session = this.sftpSessions.get(this.activeSessionId);
+    if (!session) return;
+
+    const remotePath = this.currentSftpPath[this.activeSessionId];
+    const result = await window.electronAPI.sftp.upload(session.sessionId, remotePath);
+    
+    if (result.success) {
+      this.showNotification('上传完成', 'success');
+      this.sftpRefresh();
+    } else if (result.cancelled) {
+      // 用户取消，不显示错误
+    } else if (result.error !== 'User canceled') {
+      this.showNotification('上传失败: ' + result.error, 'error');
+    }
+  }
+
+  async sftpMkdir() {
+    if (!this.activeSessionId || !this.activeSessionId.startsWith('sftp-')) return;
+
+    const session = this.sftpSessions.get(this.activeSessionId);
+    if (!session) return;
+
+    this.showInputDialog('新建文件夹', '请输入文件夹名称:', '', async (dirName) => {
+      if (!dirName) return;
+
+      const remotePath = this.currentSftpPath[this.activeSessionId] === '/' 
+        ? `/${dirName}` 
+        : `${this.currentSftpPath[this.activeSessionId]}/${dirName}`;
+
+      const result = await window.electronAPI.sftp.mkdir(session.sessionId, remotePath);
+      
+      if (result.success) {
+        this.sftpRefresh();
+      } else {
+        this.showAlert('创建文件夹失败: ' + result.error);
+      }
+    });
+  }
+
+  async sftpDelete(sftpSessionId, fileName) {
+    this.showConfirmDialog(
+      '删除确认',
+      `确定删除 "${fileName}" 吗？`,
+      async () => {
+        const session = this.sftpSessions.get(sftpSessionId);
+        if (!session) return;
+
+        const remotePath = this.currentSftpPath[sftpSessionId] === '/' 
+          ? `/${fileName}` 
+          : `${this.currentSftpPath[sftpSessionId]}/${fileName}`;
+
+        const result = await window.electronAPI.sftp.delete(session.sessionId, remotePath);
+        
+        if (result.success) {
+          this.sftpRefresh();
+        } else {
+          this.showAlert('删除失败: ' + result.error);
+        }
+      }
+    );
+  }
+
+  async sftpRename(sftpSessionId, oldName) {
+    this.showInputDialog('重命名', '请输入新名称:', oldName, async (newName) => {
+      if (!newName || newName === oldName) return;
+
+      const session = this.sftpSessions.get(sftpSessionId);
+      if (!session) return;
+
+      const basePath = this.currentSftpPath[sftpSessionId];
+      const oldPath = basePath === '/' ? `/${oldName}` : `${basePath}/${oldName}`;
+      const newPath = basePath === '/' ? `/${newName}` : `${basePath}/${newName}`;
+
+      const result = await window.electronAPI.sftp.rename(session.sessionId, oldPath, newPath);
+      
+      if (result.success) {
+        this.sftpRefresh();
+      } else {
+        this.showAlert('重命名失败: ' + result.error);
+      }
+    });
+  }
+
+  sftpNavigateUp() {
+    if (!this.activeSessionId || !this.activeSessionId.startsWith('sftp-')) return;
+
+    const currentPath = this.currentSftpPath[this.activeSessionId];
+    if (currentPath === '/') return;
+
+    const parentPath = currentPath.substring(0, currentPath.lastIndexOf('/')) || '/';
+    this.sftpList(this.activeSessionId, parentPath);
+  }
+
+  sftpRefresh() {
+    if (!this.activeSessionId || !this.activeSessionId.startsWith('sftp-')) return;
+    
+    // 添加刷新按钮动画
+    const refreshBtn = document.getElementById('sftpRefreshBtn');
+    if (refreshBtn) {
+      refreshBtn.classList.add('rotating');
+      setTimeout(() => {
+        refreshBtn.classList.remove('rotating');
+      }, 600);
+    }
+    
+    this.sftpList(this.activeSessionId, this.currentSftpPath[this.activeSessionId]);
+  }
+
+  async closeSFTP(sftpSessionId) {
+    const session = this.sftpSessions.get(sftpSessionId);
+    if (session) {
+      await window.electronAPI.sftp.disconnect(session.sessionId);
+      this.sftpSessions.delete(sftpSessionId);
+    }
+
+    const tab = document.getElementById(`tab-${sftpSessionId}`);
+    if (tab) tab.remove();
+
+    // 切换到其他会话
+    if (this.activeSessionId === sftpSessionId) {
+      const remainingSessions = Array.from(this.terminals.keys());
+      if (remainingSessions.length > 0) {
+        this.switchToSession(remainingSessions[0]);
+      } else {
+        this.activeSessionId = null;
+        document.getElementById('sftpContainer').style.display = 'none';
+        document.getElementById('terminalContainer').style.display = 'block';
+      }
+    }
+  }
+
+  formatSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  }
+}
+
+// 初始化应用
+const app = new SSHClient();

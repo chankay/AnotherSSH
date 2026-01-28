@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AnotherSSH</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="../../node_modules/xterm/css/xterm.css">
+</head>
+<body>
+  <div class="container">
+    <div class="sidebar">
+      <div class="sidebar-logo">
+        <img src="../../assets/logo.svg" alt="AnotherSSH" class="logo-image">
+        <div class="logo-text">
+          <h1>AnotherSSH</h1>
+          <p>Another way to connect</p>
+        </div>
+      </div>
+      <div class="sidebar-header">
+        <h2>会话管理</h2>
+        <div class="search-box">
+          <input type="text" id="sessionSearch" placeholder="搜索会话..." />
+        </div>
+        <div class="header-actions">
+          <button id="newSessionBtn" class="btn-primary">新建连接</button>
+          <button id="newGroupBtn" class="btn-secondary">新建分组</button>
+        </div>
+        <div class="header-actions" style="margin-top: 5px;">
+          <button id="exportBtn" class="btn-secondary">导出配置</button>
+          <button id="importBtn" class="btn-secondary">导入配置</button>
+        </div>
+      </div>
+      <div class="session-list" id="sessionList">
+        <!-- 会话列表 -->
+      </div>
+    </div>
+    
+    <div class="main-content">
+      <div class="tabs" id="tabs">
+        <!-- 标签页 -->
+      </div>
+      <div class="content-area">
+        <div class="terminal-container" id="terminalContainer">
+          <!-- 终端区域 -->
+        </div>
+        <div class="sftp-container" id="sftpContainer" style="display: none;">
+          <!-- SFTP 文件管理器 -->
+          <div class="sftp-toolbar">
+            <button id="sftpBackBtn" class="btn-secondary">返回上级</button>
+            <input type="text" id="sftpPath" class="path-input" readonly>
+            <button id="sftpRefreshBtn" class="btn-secondary">刷新</button>
+            <button id="sftpSelectAllBtn" class="btn-secondary">全选</button>
+            <button id="sftpUploadBtn" class="btn-primary">上传</button>
+            <button id="sftpDownloadBtn" class="btn-primary" disabled>下载选中</button>
+            <button id="sftpMkdirBtn" class="btn-secondary">新建文件夹</button>
+          </div>
+          <div class="sftp-file-list" id="sftpFileList">
+            <!-- 文件列表 -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 连接对话框 -->
+  <div id="connectDialog" class="dialog" style="display: none;">
+    <div class="dialog-content">
+      <h3>新建 SSH 连接</h3>
+      <form id="connectForm">
+        <div class="form-group">
+          <label>主机地址:</label>
+          <input type="text" id="host" required placeholder="192.168.1.1">
+        </div>
+        <div class="form-group">
+          <label>端口:</label>
+          <input type="number" id="port" value="22" required>
+        </div>
+        <div class="form-group">
+          <label>用户名:</label>
+          <input type="text" id="username" required placeholder="root">
+        </div>
+        <div class="form-group">
+          <label>会话名称（可选）:</label>
+          <input type="text" id="sessionName" placeholder="自动生成">
+        </div>
+        <div class="form-group">
+          <label>分组:</label>
+          <select id="sessionGroup">
+            <option value="">默认分组</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="saveSession">
+            保存此会话配置
+          </label>
+        </div>
+        <div class="form-group">
+          <label>认证方式:</label>
+          <select id="authType">
+            <option value="password">密码</option>
+            <option value="key">密钥</option>
+          </select>
+        </div>
+        <div class="form-group" id="passwordGroup">
+          <label>密码:</label>
+          <input type="password" id="password">
+        </div>
+        <div class="form-group" id="keyGroup" style="display: none;">
+          <label>私钥路径:</label>
+          <input type="text" id="privateKey">
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn-primary" id="connectSubmitBtn">连接</button>
+          <button type="button" id="cancelBtn" class="btn-secondary">取消</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 输入对话框 -->
+  <div id="inputDialog" class="dialog" style="display: none;">
+    <div class="dialog-content dialog-small">
+      <h3 id="inputDialogTitle">输入</h3>
+      <div class="form-group">
+        <input type="text" id="inputDialogValue" class="dialog-input">
+      </div>
+      <div class="form-actions">
+        <button type="button" id="inputDialogOk" class="btn-primary">确定</button>
+        <button type="button" id="inputDialogCancel" class="btn-secondary">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 确认对话框 -->
+  <div id="confirmDialog" class="dialog" style="display: none;">
+    <div class="dialog-content dialog-small">
+      <h3 id="confirmDialogTitle">确认</h3>
+      <p id="confirmDialogMessage"></p>
+      <div class="form-actions">
+        <button type="button" id="confirmDialogOk" class="btn-primary">确定</button>
+        <button type="button" id="confirmDialogCancel" class="btn-secondary">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 直接使用 require 加载本地模块
+    const { Terminal } = require('xterm');
+    const { FitAddon } = require('xterm-addon-fit');
+    const { SearchAddon } = require('xterm-addon-search');
+    const { ipcRenderer } = require('electron');
+    
+    // 暴露到全局
+    window.Terminal = Terminal;
+    window.FitAddon = FitAddon;
+    window.SearchAddon = SearchAddon;
+    window.ipcRenderer = ipcRenderer;
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景渐变 -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0e639c;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1177bb;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="lightGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4ec9b0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0e639c;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- 圆角矩形背景 -->
+  <rect width="512" height="512" rx="100" fill="url(#bgGradient)"/>
+  
+  <!-- 字母 A 的外形 -->
+  <path d="M 256 100 L 400 400 L 350 400 L 320 330 L 192 330 L 162 400 L 112 400 Z" 
+        fill="white" opacity="0.95"/>
+  
+  <!-- A 的内部三角形（镂空效果） -->
+  <path d="M 256 180 L 300 280 L 212 280 Z" 
+        fill="url(#bgGradient)"/>
+  
+  <!-- 命令提示符 ">" -->
+  <path d="M 220 310 L 250 330 L 220 350" 
+        stroke="url(#lightGradient)" 
+        stroke-width="12" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" 
+        fill="none"/>
+  
+  <!-- 光标 -->
+  <rect x="260" y="320" width="20" height="30" fill="#4ec9b0" opacity="0.8">
+    <animate attributeName="opacity" values="0.8;0.2;0.8" dur="1.5s" repeatCount="indefinite"/>
+  </rect>
+</svg>
