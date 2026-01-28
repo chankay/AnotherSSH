@@ -68,6 +68,7 @@
     ],
     "compression": "maximum",
     "removePackageScripts": true,
+    "publish": null,
     "mac": {
       "category": "public.app-category.developer-tools",
       "target": [
@@ -99,7 +100,6 @@
       "icon": "assets/icon.ico"
     },
     "portable": {
-      "writeUpdateInfo": false,
       "artifactName": "${productName}-${version}-win-${arch}.${ext}"
     },
     "linux": {
@@ -116,7 +116,6 @@
       "icon": "assets/icon.png"
     },
     "appImage": {
-      "writeUpdateInfo": false,
       "artifactName": "${productName}-${version}-linux-${arch}.${ext}"
     }
   }
