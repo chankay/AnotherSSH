@@ -385,3 +385,9 @@ ipcMain.handle('open-external', async (event, url) => {
   await shell.openExternal(url);
   return { success: true };
 });
+
+
+// 获取应用版本号
+ipcMain.handle('get-app-version', () => {
+  return app.getVersion();
+});

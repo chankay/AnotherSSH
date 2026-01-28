@@ -50,7 +50,8 @@ if (!window.electronAPI) {
       stopAutoSync: () => window.ipcRenderer.invoke('webdav:stopAutoSync')
     },
     checkUpdates: () => window.ipcRenderer.invoke('check-updates'),
-    openExternal: (url) => window.ipcRenderer.invoke('open-external', url)
+    openExternal: (url) => window.ipcRenderer.invoke('open-external', url),
+    getAppVersion: () => window.ipcRenderer.invoke('get-app-version')
   };
 }
 
@@ -75,6 +76,9 @@ class SSHClient {
   init() {
     this.setupEventListeners();
     this.loadSessions();
+    
+    // 加载并显示版本号
+    this.loadAppVersion();
     
     // 检查更新
     this.checkForUpdates();
@@ -2405,6 +2409,19 @@ class SSHClient {
   getAllSessions() {
     // 直接返回所有保存的会话
     return this.savedSessions || [];
+  }
+
+  // 加载并显示应用版本号
+  async loadAppVersion() {
+    try {
+      const version = await window.electronAPI.getAppVersion();
+      const statusVersionText = document.getElementById('statusVersionText');
+      if (statusVersionText) {
+        statusVersionText.textContent = `v${version}`;
+      }
+    } catch (error) {
+      console.error('Failed to load app version:', error);
+    }
   }
 
   // 检查更新
