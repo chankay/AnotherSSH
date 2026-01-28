@@ -87,6 +87,28 @@ class SSHClient {
     window.electronAPI.sftp.onProgress((data) => {
       this.updateProgress(data);
     });
+
+    // 监听窗口大小变化，调整所有终端
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+      // 使用防抖，避免频繁调整
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        this.terminals.forEach((terminalData) => {
+          if (terminalData.fitAddon) {
+            terminalData.fitAddon.fit();
+            // 通知后端更新终端大小
+            if (terminalData.terminal) {
+              window.electronAPI.ssh.resize(
+                terminalData.sessionId, 
+                terminalData.terminal.cols, 
+                terminalData.terminal.rows
+              );
+            }
+          }
+        });
+      }, 100);
+    });
   }
 
   updateProgress(data) {
@@ -441,12 +463,6 @@ class SSHClient {
       window.electronAPI.ssh.send(sessionId, data);
     });
 
-    // 监听窗口大小变化
-    window.addEventListener('resize', () => {
-      fitAddon.fit();
-      window.electronAPI.ssh.resize(sessionId, terminal.cols, terminal.rows);
-    });
-
     // 初始化终端大小
     window.electronAPI.ssh.resize(sessionId, terminal.cols, terminal.rows);
 
@@ -454,6 +470,7 @@ class SSHClient {
       terminal,
       fitAddon,
       searchAddon,
+      sessionId,
       config
     });
 
@@ -523,6 +540,9 @@ class SSHClient {
 
     this.activeSessionId = sessionId;
 
+    // 更新状态栏
+    this.updateStatusBar(sessionId);
+
     // 重新调整终端大小
     const terminalData = this.terminals.get(sessionId);
     if (terminalData) {
@@ -530,6 +550,41 @@ class SSHClient {
         terminalData.fitAddon.fit();
       }, 0);
     }
+  }
+
+  updateStatusBar(sessionId) {
+    const terminalData = this.terminals.get(sessionId);
+    if (!terminalData) {
+      // 没有活动会话
+      document.getElementById('statusConnectionText').textContent = '未连接';
+      document.querySelector('#statusConnection .status-icon').className = 'status-icon disconnected';
+      document.getElementById('statusSessionText').textContent = '';
+      document.getElementById('statusInfoText').textContent = '';
+      return;
+    }
+
+    const config = terminalData.config;
+    const tab = document.getElementById(`tab-${sessionId}`);
+    const statusSpan = tab?.querySelector('.tab-status');
+    
+    // 更新连接状态
+    if (statusSpan?.classList.contains('connected')) {
+      document.getElementById('statusConnectionText').textContent = '已连接';
+      document.querySelector('#statusConnection .status-icon').className = 'status-icon connected';
+    } else if (statusSpan?.classList.contains('connecting')) {
+      document.getElementById('statusConnectionText').textContent = '连接中';
+      document.querySelector('#statusConnection .status-icon').className = 'status-icon connecting';
+    } else {
+      document.getElementById('statusConnectionText').textContent = '已断开';
+      document.querySelector('#statusConnection .status-icon').className = 'status-icon disconnected';
+    }
+
+    // 更新会话信息
+    const sessionInfo = `${config.username}@${config.host}:${config.port}`;
+    document.getElementById('statusSessionText').textContent = sessionInfo;
+
+    // 更新其他信息（可以后续扩展）
+    document.getElementById('statusInfoText').textContent = '';
   }
 
   async closeSession(sessionId, skipStatusUpdate = false) {
@@ -937,6 +992,9 @@ class SSHClient {
           case 'edit':
             this.editSession(session);
             break;
+          case 'clone':
+            this.cloneSession(session);
+            break;
           case 'delete':
             this.showConfirmDialog(
               '删除会话',
@@ -1151,6 +1209,51 @@ class SSHClient {
     this.editingSessionId = session.id;
     document.querySelector('#connectDialog h3').textContent = '编辑 SSH 连接';
     document.getElementById('connectSubmitBtn').textContent = '保存';
+    document.getElementById('connectDialog').style.display = 'flex';
+  }
+
+  cloneSession(session) {
+    // 填充表单（与 editSession 类似，但不设置 editingSessionId）
+    document.getElementById('host').value = session.host;
+    document.getElementById('port').value = session.port || 22;
+    document.getElementById('username').value = session.username;
+    document.getElementById('sessionName').value = (session.name || '') + ' (副本)';
+    
+    // 设置认证方式
+    const authType = session.password ? 'password' : 'key';
+    document.getElementById('authType').value = authType;
+    
+    if (authType === 'password') {
+      document.getElementById('password').value = session.password || '';
+      document.getElementById('passwordGroup').style.display = 'block';
+      document.getElementById('keyGroup').style.display = 'none';
+    } else {
+      document.getElementById('privateKey').value = session.privateKey || '';
+      document.getElementById('passwordGroup').style.display = 'none';
+      document.getElementById('keyGroup').style.display = 'block';
+    }
+
+    // 设置分组
+    const groupSelect = document.getElementById('sessionGroup');
+    groupSelect.innerHTML = '<option value="">默认分组</option>';
+    this.sessionGroups.forEach(group => {
+      const option = document.createElement('option');
+      option.value = group;
+      option.textContent = group;
+      if (group === session.group) {
+        option.selected = true;
+      }
+      groupSelect.appendChild(option);
+    });
+
+    // 显示"保存此会话配置"选项（默认勾选）
+    document.getElementById('saveSession').parentElement.style.display = 'block';
+    document.getElementById('saveSession').checked = true;
+
+    // 显示对话框，不设置 editingSessionId（这样会创建新会话）
+    this.editingSessionId = null;
+    document.querySelector('#connectDialog h3').textContent = '克隆 SSH 连接';
+    document.getElementById('connectSubmitBtn').textContent = '连接';
     document.getElementById('connectDialog').style.display = 'flex';
   }
 
@@ -2062,6 +2165,11 @@ class SSHClient {
       disconnected: '已断开'
     };
     statusIndicator.title = statusText[status] || '';
+
+    // 如果是当前活动会话，更新状态栏
+    if (sessionId === this.activeSessionId) {
+      this.updateStatusBar(sessionId);
+    }
   }
 
   // ========== WebDAV 同步相关方法 ==========

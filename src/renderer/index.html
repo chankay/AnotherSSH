@@ -47,6 +47,22 @@
         <div class="terminal-container" id="terminalContainer">
           <!-- 终端区域 -->
         </div>
+        <div class="status-bar" id="statusBar">
+          <div class="status-left">
+            <span class="status-item" id="statusConnection">
+              <span class="status-icon">●</span>
+              <span id="statusConnectionText">未连接</span>
+            </span>
+            <span class="status-item" id="statusSession">
+              <span id="statusSessionText"></span>
+            </span>
+          </div>
+          <div class="status-right">
+            <span class="status-item" id="statusInfo">
+              <span id="statusInfoText"></span>
+            </span>
+          </div>
+        </div>
         <div class="sftp-container" id="sftpContainer" style="display: none;">
           <!-- SFTP 文件管理器 -->
           <div class="sftp-toolbar">
@@ -153,6 +169,7 @@
   <div id="sessionContextMenu" class="context-menu" style="display: none;">
     <div class="context-menu-item" data-action="connect">⚡ 连接</div>
     <div class="context-menu-item" data-action="edit">✏️ 编辑</div>
+    <div class="context-menu-item" data-action="clone">📋 克隆</div>
     <div class="context-menu-divider"></div>
     <div class="context-menu-item context-menu-danger" data-action="delete">🗑️ 删除</div>
   </div>
