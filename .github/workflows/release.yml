@@ -65,6 +65,9 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
 
@@ -77,5 +80,6 @@ jobs:
             linux-build/*
           draft: false
           prerelease: false
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
