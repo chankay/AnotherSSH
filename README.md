@@ -93,7 +93,7 @@ xattr -cr /Applications/AnotherSSH.app
 - **Node.js** - JavaScript 运行时
 - **ssh2** - SSH 连接库
 - **ssh2-sftp-client** - SFTP 文件传输
-- **xterm.js** - 终端模拟器
+- **@xterm/xterm** - 终端模拟器
 - **webdav** - WebDAV 客户端（配置同步）
 
 ## 📦 开发者指南

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AnotherSSH</title>
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="../../node_modules/xterm/css/xterm.css">
+  <link rel="stylesheet" href="../../node_modules/@xterm/xterm/css/xterm.css">
 </head>
 <body>
   <div class="container">
@@ -383,9 +383,9 @@
 
   <script>
     // 直接使用 require 加载本地模块
-    const { Terminal } = require('xterm');
-    const { FitAddon } = require('xterm-addon-fit');
-    const { SearchAddon } = require('xterm-addon-search');
+    const { Terminal } = require('@xterm/xterm');
+    const { FitAddon } = require('@xterm/addon-fit');
+    const { SearchAddon } = require('@xterm/addon-search');
     const { ipcRenderer } = require('electron');
     
     // 暴露到全局
