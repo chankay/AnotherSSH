@@ -66,6 +66,7 @@ class SSHClient {
     this.searchQuery = '';
     this.selectedFiles = new Set();
     this.currentTransferId = null;
+    this.settingsDialogInitialized = false; // 标记设置对话框是否已初始化
     this.init();
   }
 
@@ -1857,8 +1858,20 @@ class SSHClient {
 
   showSettingsDialog() {
     this.loadSettings();
+    this.loadWebDAVConfig(); // 加载 WebDAV 配置
     document.getElementById('settingsDialog').style.display = 'flex';
     
+    // 只在第一次打开时初始化事件监听器
+    if (!this.settingsDialogInitialized) {
+      this.initializeSettingsDialog();
+      this.settingsDialogInitialized = true;
+    }
+    
+    // 初始预览
+    this.updateThemePreview(document.getElementById('themeMode').value);
+  }
+
+  initializeSettingsDialog() {
     // 设置标签切换
     document.querySelectorAll('.settings-tab').forEach(tab => {
       tab.addEventListener('click', () => {
@@ -1880,9 +1893,6 @@ class SSHClient {
       customSettings.style.display = e.target.value === 'custom' ? 'block' : 'none';
       this.updateThemePreview(e.target.value);
     });
-
-    // 初始预览
-    this.updateThemePreview(document.getElementById('themeMode').value);
 
     // 颜色选择器同步
     this.setupColorSync('bgColor', 'bgColorText');
@@ -1907,9 +1917,6 @@ class SSHClient {
       this.resetTheme();
     });
 
-    // WebDAV 同步相关
-    this.loadWebDAVConfig();
-    
     // 自动同步复选框
     document.getElementById('autoSyncEnabled').addEventListener('change', (e) => {
       document.getElementById('autoSyncIntervalGroup').style.display = 
@@ -2102,10 +2109,19 @@ class SSHClient {
     // 应用终端设置到所有现有终端
     this.terminals.forEach((terminalData) => {
       const terminal = terminalData.terminal;
-      terminal.options.fontSize = settings.fontSize;
-      terminal.options.fontFamily = settings.fontFamily;
-      terminal.options.cursorStyle = settings.cursorStyle;
-      terminal.options.cursorBlink = settings.cursorBlink;
+      
+      // 更新字体设置
+      if (settings.fontSize) {
+        terminal.options.fontSize = settings.fontSize;
+      }
+      if (settings.fontFamily) {
+        terminal.options.fontFamily = settings.fontFamily;
+      }
+      if (settings.cursorStyle) {
+        terminal.options.cursorStyle = settings.cursorStyle;
+      }
+      terminal.options.cursorBlink = settings.cursorBlink !== false;
+      
       terminalData.fitAddon.fit();
     });
   }
