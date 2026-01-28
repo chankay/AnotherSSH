@@ -29,7 +29,7 @@ jobs:
         run: npm ci
 
       - name: Build Electron app
-        run: npm run build
+        run: npm run build -- --publish never
 
       - name: Upload artifacts (macOS)
         if: matrix.os == 'macos-latest'
