@@ -446,6 +446,20 @@ class SSHClient {
         this.cancelReconnect(sessionId);
       }
     });
+
+    // 颜色选择器事件
+    document.querySelectorAll('.color-option').forEach(option => {
+      option.addEventListener('click', () => {
+        // 移除所有选中状态
+        document.querySelectorAll('.color-option').forEach(opt => {
+          opt.classList.remove('selected');
+        });
+        // 添加选中状态
+        option.classList.add('selected');
+        // 设置隐藏字段的值
+        document.getElementById('sessionColor').value = option.dataset.color;
+      });
+    });
   }
 
   showConnectDialog() {
@@ -465,6 +479,13 @@ class SSHClient {
       groupSelect.appendChild(option);
     });
 
+    // 重置颜色选择
+    document.querySelectorAll('.color-option').forEach(opt => {
+      opt.classList.remove('selected');
+    });
+    document.querySelector('.color-option[data-color=""]').classList.add('selected');
+    document.getElementById('sessionColor').value = '';
+
     document.getElementById('connectDialog').style.display = 'flex';
   }
 
@@ -479,7 +500,8 @@ class SSHClient {
       port: parseInt(document.getElementById('port').value),
       username: document.getElementById('username').value,
       name: document.getElementById('sessionName').value || `${document.getElementById('username').value}@${document.getElementById('host').value}`,
-      group: document.getElementById('sessionGroup').value
+      group: document.getElementById('sessionGroup').value,
+      color: document.getElementById('sessionColor').value
     };
 
     const authType = document.getElementById('authType').value;
@@ -682,6 +704,13 @@ class SSHClient {
     const tab = document.createElement('div');
     tab.className = 'tab';
     tab.id = `tab-${sessionId}`;
+    
+    // 设置颜色属性
+    if (config.color) {
+      tab.setAttribute('data-color', config.color);
+      tab.style.setProperty('--tab-color', config.color);
+    }
+    
     tab.innerHTML = `
       <span class="tab-status connecting" title="连接中"></span>
       <span class="tab-name">${config.name || config.username + '@' + config.host}</span>
@@ -1655,6 +1684,15 @@ class SSHClient {
       }
       groupSelect.appendChild(option);
     });
+
+    // 设置颜色
+    document.querySelectorAll('.color-option').forEach(opt => {
+      opt.classList.remove('selected');
+      if (opt.dataset.color === (session.color || '')) {
+        opt.classList.add('selected');
+      }
+    });
+    document.getElementById('sessionColor').value = session.color || '';
 
     // 隐藏"保存此会话配置"选项（编辑模式下自动保存）
     document.getElementById('saveSession').parentElement.style.display = 'none';

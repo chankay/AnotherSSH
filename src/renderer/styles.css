@@ -100,6 +100,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  border-left: 3px solid transparent;
 }
 
 .tab.active {
@@ -112,6 +113,16 @@ body {
 .tab:hover {
   background: #3e3e42;
 }
+
+/* 标签颜色标记 */
+.tab[data-color]:not([data-color=""]) {
+  border-left-color: var(--tab-color);
+}
+
+.tab.active[data-color]:not([data-color=""]) {
+  border-left-width: 4px;
+}
+
 
 .tab-close {
   cursor: pointer;
@@ -767,6 +778,39 @@ body.light-theme .reconnect-message {
 .input-with-button .btn-browse:active {
   transform: scale(0.98);
 }
+
+/* 颜色选择器 */
+.color-picker {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.color-option {
+  cursor: pointer;
+  padding: 2px;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.color-option:hover {
+  border-color: var(--primary-color);
+  transform: scale(1.1);
+}
+
+.color-option.selected {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 8px var(--primary-color);
+}
+
+.color-preview {
+  width: 32px;
+  height: 32px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
 
 .form-actions {
   display: flex;

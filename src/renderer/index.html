@@ -190,6 +190,33 @@
           </select>
         </div>
         <div class="form-group">
+          <label>标签颜色:</label>
+          <div class="color-picker">
+            <div class="color-option" data-color="" title="默认">
+              <div class="color-preview" style="background: #888;"></div>
+            </div>
+            <div class="color-option" data-color="#4ec9b0" title="绿色 - 开发环境">
+              <div class="color-preview" style="background: #4ec9b0;"></div>
+            </div>
+            <div class="color-option" data-color="#ffa500" title="橙色 - 测试环境">
+              <div class="color-preview" style="background: #ffa500;"></div>
+            </div>
+            <div class="color-option" data-color="#f48771" title="红色 - 生产环境">
+              <div class="color-preview" style="background: #f48771;"></div>
+            </div>
+            <div class="color-option" data-color="#569cd6" title="蓝色">
+              <div class="color-preview" style="background: #569cd6;"></div>
+            </div>
+            <div class="color-option" data-color="#c586c0" title="紫色">
+              <div class="color-preview" style="background: #c586c0;"></div>
+            </div>
+            <div class="color-option" data-color="#dcdcaa" title="黄色">
+              <div class="color-preview" style="background: #dcdcaa;"></div>
+            </div>
+          </div>
+          <input type="hidden" id="sessionColor" value="">
+        </div>
+        <div class="form-group">
           <label>
             <input type="checkbox" id="saveSession" checked>
             保存此会话配置
