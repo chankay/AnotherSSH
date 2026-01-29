@@ -102,3 +102,104 @@ jobs:
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sync-to-gitee:
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Extract version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Extract changelog
+        id: changelog
+        run: |
+          VERSION=${{ steps.get_version.outputs.VERSION }}
+          CHANGELOG=$(awk "/## \[$VERSION\]/,/## \[/" CHANGELOG.md | sed '1d;$d')
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="Release version $VERSION"
+          fi
+          echo "$CHANGELOG" > release_notes.md
+
+      - name: Create Gitee Release
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+        run: |
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG_NAME#v}"
+          RELEASE_NAME="v${VERSION}"
+          
+          echo "Creating Gitee Release for ${TAG_NAME}..."
+          
+          # 读取 release notes
+          RELEASE_BODY=$(cat release_notes.md | jq -Rs .)
+          
+          # 检查 Release 是否已存在
+          EXISTING_RELEASE=$(curl -s "https://gitee.com/api/v5/repos/chankay/AnotherSSH/releases/tags/${TAG_NAME}?access_token=${GITEE_TOKEN}")
+          EXISTING_ID=$(echo "$EXISTING_RELEASE" | jq -r '.id')
+          
+          if [ "$EXISTING_ID" != "null" ] && [ -n "$EXISTING_ID" ]; then
+            echo "Release already exists with ID: $EXISTING_ID, deleting..."
+            curl -X DELETE "https://gitee.com/api/v5/repos/chankay/AnotherSSH/releases/${EXISTING_ID}?access_token=${GITEE_TOKEN}"
+            sleep 2
+          fi
+          
+          # 创建 Gitee Release
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "https://gitee.com/api/v5/repos/chankay/AnotherSSH/releases" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"access_token\": \"${GITEE_TOKEN}\",
+              \"tag_name\": \"${TAG_NAME}\",
+              \"name\": \"${RELEASE_NAME}\",
+              \"body\": ${RELEASE_BODY},
+              \"prerelease\": false,
+              \"target_commitish\": \"main\"
+            }")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          if [ "$HTTP_CODE" != "201" ]; then
+            echo "❌ Failed to create Gitee release (HTTP ${HTTP_CODE})"
+            echo "Response: $BODY"
+            exit 1
+          fi
+          
+          RELEASE_ID=$(echo "$BODY" | jq -r '.id')
+          echo "✅ Gitee Release created with ID: $RELEASE_ID"
+          
+          # 上传所有附件
+          for dir in macos-build windows-build linux-build; do
+            if [ -d "$dir" ]; then
+              for file in "$dir"/*; do
+                if [ -f "$file" ]; then
+                  filename=$(basename "$file")
+                  filesize=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file")
+                  echo "Uploading ${filename} (${filesize} bytes)..."
+                  
+                  UPLOAD_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+                    "https://gitee.com/api/v5/repos/chankay/AnotherSSH/releases/${RELEASE_ID}/attach_files" \
+                    -F "access_token=${GITEE_TOKEN}" \
+                    -F "file=@${file}")
+                  
+                  UPLOAD_CODE=$(echo "$UPLOAD_RESPONSE" | tail -n1)
+                  
+                  if [ "$UPLOAD_CODE" = "201" ]; then
+                    echo "✅ Uploaded ${filename}"
+                  else
+                    echo "⚠️  Failed to upload ${filename} (HTTP ${UPLOAD_CODE})"
+                  fi
+                fi
+              done
+            fi
+          done
+          
+          echo "✅ Gitee Release sync completed!"
+          echo "🔗 https://gitee.com/chankay/AnotherSSH/releases/${TAG_NAME}"
+
