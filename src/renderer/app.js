@@ -90,6 +90,7 @@ class SSHClient {
     // 自动重连相关
     this.reconnectConfig = new Map(); // sessionId -> { attempts, timer, interval, config }
     this.userDisconnectedSessions = new Set(); // 用户主动断开的会话
+    this.commandBuffers = new Map(); // sessionId -> 命令缓冲区，用于检测 exit 等命令
     
     this.init();
   }
@@ -872,6 +873,9 @@ class SSHClient {
     // 清理重连状态
     this.clearReconnectState(sessionId);
     
+    // 清理命令缓冲区
+    this.commandBuffers.delete(sessionId);
+    
     // 更新状态为断开（除非是自动关闭）
     if (!skipStatusUpdate) {
       this.updateTabStatus(sessionId, 'disconnected');
@@ -918,12 +922,19 @@ class SSHClient {
   handleSSHClosed(data) {
     const { sessionId } = data;
     
+    console.log(`SSH closed for session ${sessionId}`);
+    console.log(`User disconnected sessions:`, Array.from(this.userDisconnectedSessions));
+    console.log(`Is ${sessionId} in userDisconnectedSessions?`, this.userDisconnectedSessions.has(sessionId));
+    
     // 检查是否为用户主动断开
     if (this.userDisconnectedSessions.has(sessionId)) {
+      console.log(`Session ${sessionId} was user-initiated disconnect, not reconnecting`);
       this.userDisconnectedSessions.delete(sessionId);
       this.cleanupSession(sessionId);
       return;
     }
+    
+    console.log(`Session ${sessionId} was unexpected disconnect, checking auto-reconnect`);
     
     // 更新标签页状态为断开
     this.updateTabStatus(sessionId, 'disconnected');
@@ -936,8 +947,10 @@ class SSHClient {
     
     // 检查是否应该自动重连
     if (this.shouldAutoReconnect(sessionId)) {
+      console.log(`Starting auto-reconnect for session ${sessionId}`);
       this.startReconnect(sessionId);
     } else {
+      console.log(`Auto-reconnect disabled for session ${sessionId}`);
       // 3秒后自动关闭标签页
       setTimeout(() => {
         this.closeSession(sessionId, true);
@@ -3726,6 +3739,65 @@ class SSHClient {
   }
 
   handleTerminalInput(sessionId, data) {
+    // 检测是否输入了退出命令
+    if (!this.commandBuffers.has(sessionId)) {
+      this.commandBuffers.set(sessionId, '');
+    }
+    
+    let buffer = this.commandBuffers.get(sessionId);
+    let isExitCommand = false;
+    
+    // 处理输入
+    if (data === '\r') {
+      // 回车键，检查命令
+      const command = buffer.trim().toLowerCase();
+      
+      // 检测退出命令
+      if (command === 'exit' || command === 'logout' || command === 'quit') {
+        console.log(`Detected exit command for session ${sessionId}`);
+        isExitCommand = true;
+        
+        // 根据同步模式标记相应的会话（在发送命令之前标记）
+        if (this.syncInputMode === 'OFF') {
+          this.userDisconnectedSessions.add(sessionId);
+          console.log(`Marked session ${sessionId} as user-disconnected`);
+        } else if (this.syncInputMode === 'ALL') {
+          // 标记所有会话
+          this.terminals.forEach((termData, sid) => {
+            this.userDisconnectedSessions.add(sid);
+            console.log(`Marked session ${sid} as user-disconnected (ALL mode)`);
+          });
+        } else if (this.syncInputMode === 'SPLIT') {
+          // 标记当前分屏的所有面板
+          const splitData = this.splitSessions.get(this.activeSessionId);
+          if (splitData) {
+            splitData.panes.forEach(pane => {
+              this.userDisconnectedSessions.add(pane.sshSessionId);
+              console.log(`Marked session ${pane.sshSessionId} as user-disconnected (SPLIT mode)`);
+            });
+          } else {
+            this.userDisconnectedSessions.add(sessionId);
+            console.log(`Marked session ${sessionId} as user-disconnected (SPLIT mode, no split data)`);
+          }
+        }
+      }
+      
+      // 清空缓冲区
+      this.commandBuffers.set(sessionId, '');
+    } else if (data === '\x7f' || data === '\b') {
+      // 退格键，删除最后一个字符
+      buffer = buffer.slice(0, -1);
+      this.commandBuffers.set(sessionId, buffer);
+    } else if (data === '\x03') {
+      // Ctrl+C，清空缓冲区
+      this.commandBuffers.set(sessionId, '');
+    } else if (data.length === 1 && data.charCodeAt(0) >= 32 && data.charCodeAt(0) < 127) {
+      // 可打印字符，添加到缓冲区
+      buffer += data;
+      this.commandBuffers.set(sessionId, buffer);
+    }
+    
+    // 发送数据（在标记之后发送，确保标记先完成）
     if (this.syncInputMode === 'OFF') {
       // 正常模式，只发送到当前会话
       window.electronAPI.ssh.send(sessionId, data);
