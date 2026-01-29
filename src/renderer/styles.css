@@ -104,6 +104,9 @@ body {
 
 .tab.active {
   background: #1e1e1e;
+  border-bottom: 2px solid var(--primary-color);
+  color: var(--primary-color);
+  font-weight: 500;
 }
 
 .tab:hover {
@@ -168,6 +171,32 @@ body {
 
 .toolbar-btn:active {
   transform: scale(0.95);
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border-color);
+  margin: 0 5px;
+}
+
+.toolbar-btn-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: auto;
+  padding: 0 10px;
+}
+
+.toolbar-btn-toggle.active {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+}
+
+.toolbar-btn-toggle span {
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 /* 分屏容器 */
@@ -1530,6 +1559,9 @@ body {
 
 .tab.active {
   background: var(--bg-color);
+  border-bottom: 2px solid var(--primary-color);
+  color: var(--primary-color);
+  font-weight: 500;
 }
 
 .tab:hover {

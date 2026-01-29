@@ -83,6 +83,9 @@ class SSHClient {
     this.splitSessions = new Map(); // sessionId -> { layout, panes: [] }
     this.activePaneId = null;
     
+    // 同步输入相关
+    this.syncInputMode = 'OFF'; // OFF / ALL / SPLIT
+    
     this.init();
   }
 
@@ -341,6 +344,11 @@ class SSHClient {
     document.getElementById('splitSessionSearch').addEventListener('input', (e) => {
       this.filterSplitSessions(e.target.value);
     });
+
+    // 同步输入按钮事件
+    document.getElementById('syncInputBtn').addEventListener('click', () => {
+      this.toggleSyncInput();
+    });
   }
 
   showConnectDialog() {
@@ -544,7 +552,7 @@ class SSHClient {
 
     // 监听终端输入
     terminal.onData((data) => {
-      window.electronAPI.ssh.send(sessionId, data);
+      this.handleTerminalInput(sessionId, data);
     });
 
     // 初始化终端大小
@@ -625,12 +633,29 @@ class SSHClient {
       document.getElementById('terminalToolbar').style.display = 'flex';
       document.getElementById('closeSplitBtn').style.display = 'flex';
       
-      // 渲染分屏
+      // 隐藏所有普通终端
+      document.querySelectorAll('.terminal-wrapper').forEach(el => {
+        el.classList.remove('active');
+      });
+      
+      // 隐藏所有其他会话的分屏容器
+      document.querySelectorAll('.split-container').forEach(el => {
+        if (el.id !== `split-${sessionId}`) {
+          el.style.display = 'none';
+        }
+      });
+      
+      // 渲染当前会话的分屏
       this.renderSplitPanes(sessionId);
     } else {
       // 显示工具栏，但隐藏关闭分屏按钮
       document.getElementById('terminalToolbar').style.display = 'flex';
       document.getElementById('closeSplitBtn').style.display = 'none';
+      
+      // 隐藏所有分屏容器
+      document.querySelectorAll('.split-container').forEach(el => {
+        el.style.display = 'none';
+      });
       
       // 隐藏所有终端
       document.querySelectorAll('.terminal-wrapper').forEach(el => {
@@ -3005,7 +3030,7 @@ class SSHClient {
 
       // 监听终端输入
       terminal.onData((data) => {
-        window.electronAPI.ssh.send(sshSessionId, data);
+        this.handleTerminalInput(sshSessionId, data);
       });
 
       // 初始化终端大小
@@ -3085,8 +3110,23 @@ class SSHClient {
 
     const container = document.getElementById('terminalContainer');
     
-    // 清空容器
-    container.innerHTML = '';
+    // 隐藏所有普通终端
+    document.querySelectorAll('.terminal-wrapper').forEach(el => {
+      el.classList.remove('active');
+    });
+    
+    // 隐藏所有其他会话的分屏容器
+    document.querySelectorAll('.split-container').forEach(el => {
+      if (el.id !== `split-${sessionId}`) {
+        el.style.display = 'none';
+      }
+    });
+    
+    // 移除旧的分屏容器（如果存在）
+    const oldSplitContainer = document.getElementById(`split-${sessionId}`);
+    if (oldSplitContainer) {
+      oldSplitContainer.remove();
+    }
 
     // 创建分屏容器
     const splitContainer = document.createElement('div');
@@ -3147,6 +3187,8 @@ class SSHClient {
       }, 0);
     });
 
+    // 显示当前分屏容器（使用 flex，不是 grid）
+    splitContainer.style.display = 'flex';
     container.appendChild(splitContainer);
 
     // 监听窗口大小变化
@@ -3243,6 +3285,71 @@ class SSHClient {
     }
 
     this.showNotification('已关闭分屏', 'success');
+  }
+
+  // ========== 同步输入功能 ==========
+
+  toggleSyncInput() {
+    // 循环切换模式: OFF -> ALL -> SPLIT -> OFF
+    if (this.syncInputMode === 'OFF') {
+      this.syncInputMode = 'ALL';
+    } else if (this.syncInputMode === 'ALL') {
+      // 只有在分屏模式下才能切换到 SPLIT
+      if (this.splitSessions.has(this.activeSessionId)) {
+        this.syncInputMode = 'SPLIT';
+      } else {
+        this.syncInputMode = 'OFF';
+      }
+    } else {
+      this.syncInputMode = 'OFF';
+    }
+
+    this.updateSyncInputUI();
+  }
+
+  updateSyncInputUI() {
+    const btn = document.getElementById('syncInputBtn');
+    const text = document.getElementById('syncInputText');
+
+    if (this.syncInputMode === 'OFF') {
+      btn.classList.remove('active');
+      text.textContent = '同步: 关';
+      btn.title = '同步输入模式: 关闭';
+    } else if (this.syncInputMode === 'ALL') {
+      btn.classList.add('active');
+      const count = this.terminals.size;
+      text.textContent = `同步: 全部 (${count})`;
+      btn.title = `同步输入到所有 ${count} 个会话`;
+    } else if (this.syncInputMode === 'SPLIT') {
+      btn.classList.add('active');
+      const splitData = this.splitSessions.get(this.activeSessionId);
+      const count = splitData ? splitData.panes.length : 0;
+      text.textContent = `同步: 分屏 (${count})`;
+      btn.title = `同步输入到当前分屏的 ${count} 个面板`;
+    }
+  }
+
+  handleTerminalInput(sessionId, data) {
+    if (this.syncInputMode === 'OFF') {
+      // 正常模式，只发送到当前会话
+      window.electronAPI.ssh.send(sessionId, data);
+    } else if (this.syncInputMode === 'ALL') {
+      // 同步到所有会话
+      this.terminals.forEach((termData, sid) => {
+        window.electronAPI.ssh.send(sid, data);
+      });
+    } else if (this.syncInputMode === 'SPLIT') {
+      // 同步到当前分屏的所有面板
+      const splitData = this.splitSessions.get(this.activeSessionId);
+      if (splitData) {
+        splitData.panes.forEach(pane => {
+          window.electronAPI.ssh.send(pane.sshSessionId, data);
+        });
+      } else {
+        // 如果不在分屏模式，回退到正常模式
+        window.electronAPI.ssh.send(sessionId, data);
+      }
+    }
   }
 }
 
