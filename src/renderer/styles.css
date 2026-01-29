@@ -644,13 +644,21 @@ body.light-theme .reconnect-message {
 .split-pane-content {
   flex: 1;
   overflow: hidden;
+  padding: 10px;
+  padding-bottom: 10px;  /* 恢复原来的值 */
+  box-sizing: border-box;
+}
+
+/* 分屏终端内容添加底部空间 */
+.split-pane-content > div {
+  height: calc(100% - 30px);  /* 减去底部留白 */
 }
 
 .terminal-wrapper {
   width: 100%;
   height: 100%;
   padding: 10px;
-  padding-bottom: 5px;
+  padding-bottom: 10px;  /* 恢复原来的值 */
   display: none;
   box-sizing: border-box;
   overflow: hidden;
@@ -658,6 +666,12 @@ body.light-theme .reconnect-message {
 
 .terminal-wrapper.active {
   display: block;
+}
+
+/* xterm 容器添加底部空间，使用 transform 优化性能 */
+.terminal-wrapper > div {
+  height: calc(100% - 30px);  /* 减去底部留白 */
+  will-change: auto;  /* 移除不必要的 GPU 加速 */
 }
 
 /* 状态栏 */
@@ -1533,10 +1547,8 @@ body.light-theme .reconnect-message {
   border-left: 4px solid #0e639c;
 }
 
-/* 性能优化：减少重绘 */
-.terminal-wrapper,
+/* 性能优化：减少重绘 - 移除 will-change 避免卡顿 */
 .sftp-container {
-  will-change: transform;
   transform: translateZ(0);
 }
 
