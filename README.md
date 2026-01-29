@@ -59,9 +59,11 @@
 
 访问 [GitHub Releases](https://github.com/chankay/anotherssh/releases) 下载最新版本：
 
-### Gitee（国内镜像）
+### Gitee（国内镜像）⚡
 
 访问 [Gitee Releases](https://gitee.com/chankay/AnotherSSH/releases) 下载最新版本（国内访问更快）：
+
+> 💡 **自动同步**: GitHub 和 Gitee 的代码和 Release 会自动保持同步
 
 ### 安装包
 
