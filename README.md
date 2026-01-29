@@ -31,8 +31,6 @@
 xattr -cr /Applications/AnotherSSH.app
 ```
 
-详细说明请查看 [CODE_SIGNING.md](CODE_SIGNING.md)。
-
 ## ✨ 功能特性
 
 ### SSH 连接管理
@@ -142,9 +140,8 @@ npm run build:linux
 
 ### 发布新版本
 
-查看 [RELEASE.md](RELEASE.md) 了解如何使用 GitHub Actions 自动发布。
+使用 GitHub Actions 自动发布：
 
-快速发布：
 ```bash
 # 1. 更新 package.json 中的版本号
 # 2. 提交更改
@@ -181,9 +178,6 @@ GitHub Actions 会自动构建并发布到 Releases。
 ### 更多文档
 
 - **[用户使用手册](doc/USER_MANUAL.md)** - 完整的功能说明和使用指南
-- **[主题配置](THEMES.md)** - 11 款预设主题和自定义主题
-- **[WebDAV 同步](WEBDAV_SYNC.md)** - 配置云端同步
-- **[发布指南](RELEASE.md)** - 开发者发布流程
 
 ## 🗂️ 项目结构
 
