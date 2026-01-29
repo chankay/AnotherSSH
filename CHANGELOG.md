@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] - 2025-01-29
+
+### Fixed
+- 修复字体大小 18-19 时文字重叠问题（添加 lineHeight: 1.2）
+- 修复输入换行后卡顿问题（优化渲染性能）
+- 增加终端内容距离底部状态栏的距离，改善视觉体验
+
+### Changed
+- 优化终端渲染性能，移除导致卡顿的 will-change 属性
+- 使用高度限制替代 padding 避免布局重计算
+
+### Infrastructure
+- 配置 GitHub 到 Gitee 自动同步（代码 + Release + 附件）
+- 使用 HTTPS + Token 方式推送，无需 SSH 密钥
+- 添加历史 Release 同步脚本
+
 ## [1.0.6] - 2025-01-29
 
 ### Added
