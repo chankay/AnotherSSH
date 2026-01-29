@@ -982,6 +982,7 @@ class SSHClient {
     const terminal = new window.Terminal({
       cursorBlink: settings.cursorBlink !== false,
       fontSize: settings.fontSize || 14,
+      lineHeight: 1.2,  // 设置行高为字体大小的 1.2 倍，避免文字重叠
       fontFamily: settings.fontFamily || 'Menlo, Monaco, "Courier New", monospace',
       cursorStyle: settings.cursorStyle || 'block',
       theme: {
@@ -3120,6 +3121,7 @@ class SSHClient {
       // 更新字体设置
       if (settings.fontSize) {
         terminal.options.fontSize = settings.fontSize;
+        terminal.options.lineHeight = 1.2;  // 同时更新行高
       }
       if (settings.fontFamily) {
         terminal.options.fontFamily = settings.fontFamily;
@@ -3851,6 +3853,7 @@ class SSHClient {
       const terminal = new window.Terminal({
         cursorBlink: settings.cursorBlink !== false,
         fontSize: settings.fontSize || 14,
+        lineHeight: 1.2,  // 设置行高为字体大小的 1.2 倍，避免文字重叠
         fontFamily: settings.fontFamily || 'Menlo, Monaco, "Courier New", monospace',
         cursorStyle: settings.cursorStyle || 'block',
         theme: {
@@ -4408,6 +4411,7 @@ class SSHClient {
     this.terminals.forEach((terminalData) => {
       if (terminalData.terminal) {
         terminalData.terminal.options.fontSize = fontSize;
+        terminalData.terminal.options.lineHeight = 1.2;  // 同时更新行高
         // 重新调整大小以应用新字体
         if (terminalData.fitAddon) {
           setTimeout(() => {
@@ -4422,6 +4426,7 @@ class SSHClient {
       splitData.panes.forEach((pane) => {
         if (pane.terminal) {
           pane.terminal.options.fontSize = fontSize;
+          pane.terminal.options.lineHeight = 1.2;  // 同时更新行高
           if (pane.fitAddon) {
             setTimeout(() => {
               pane.fitAddon.fit();
