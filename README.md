@@ -33,6 +33,26 @@
 
 **AnotherSSH** = 简单 + 易用 + 强大 🚀
 
+## 📸 界面预览
+
+### 主界面 - 深色主题
+![主界面](assets/screenshots/main-dark.png)
+
+### 终端分屏 - 同时管理多台服务器
+![终端分屏](assets/screenshots/split-screen.png)
+
+### SFTP 文件管理 - 图形化文件传输
+![SFTP 文件管理](assets/screenshots/sftp.png)
+
+### 会话管理 - 分组和搜索
+![会话管理](assets/screenshots/session-management.png)
+
+### 主题配置 - 11 款预设主题
+![主题配置](assets/screenshots/themes.png)
+
+### 批量命令执行 - 同步输入模式
+![批量命令](assets/screenshots/sync-input.png)
+
 ## 📥 下载
 
 访问 [Releases 页面](https://github.com/chankay/anotherssh/releases) 下载最新版本：
