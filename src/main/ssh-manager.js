@@ -39,6 +39,14 @@ class SSHManager {
             }
           });
 
+          stream.on('error', (err) => {
+            console.error('Stream error:', err);
+            this.disconnect(sessionId);
+            if (onClose) {
+              onClose(sessionId);
+            }
+          });
+
           stream.stderr.on('data', (data) => {
             onData(data.toString());
           });
@@ -48,14 +56,46 @@ class SSHManager {
       });
 
       client.on('error', (err) => {
+        console.error('SSH client error:', err);
         reject(err);
+        // 如果已经建立了会话，触发关闭回调
+        if (this.sessions.has(sessionId)) {
+          this.disconnect(sessionId);
+          if (onClose) {
+            onClose(sessionId);
+          }
+        }
+      });
+
+      client.on('close', () => {
+        console.log('SSH client closed');
+        if (this.sessions.has(sessionId)) {
+          this.disconnect(sessionId);
+          if (onClose) {
+            onClose(sessionId);
+          }
+        }
+      });
+
+      client.on('end', () => {
+        console.log('SSH client ended');
+        if (this.sessions.has(sessionId)) {
+          this.disconnect(sessionId);
+          if (onClose) {
+            onClose(sessionId);
+          }
+        }
       });
 
       // 连接配置
       const connectConfig = {
         host: config.host,
         port: config.port || 22,
-        username: config.username
+        username: config.username,
+        // 添加 keepalive 配置，检测连接断开
+        keepaliveInterval: 30000,  // 每 30 秒发送一次心跳
+        keepaliveCountMax: 3,      // 3 次心跳失败后判定断开（90秒）
+        readyTimeout: 20000        // 连接超时 20 秒
       };
 
       if (config.password) {

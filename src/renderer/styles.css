@@ -380,6 +380,101 @@ body.light-theme .xterm .xterm-decoration-top.xterm-decoration-search-active-mat
   opacity: 0.7;
 }
 
+/* 重连提示框 */
+.reconnect-notification {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #2d2d30;
+  border: 1px solid #ff9800;
+  border-radius: 6px;
+  padding: 12px 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 400px;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.reconnect-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.reconnect-content {
+  flex: 1;
+}
+
+.reconnect-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #ff9800;
+  margin-bottom: 4px;
+}
+
+.reconnect-message {
+  font-size: 12px;
+  color: #d4d4d4;
+}
+
+.reconnect-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.reconnect-btn {
+  padding: 6px 12px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.reconnect-btn:hover {
+  background: #1177bb;
+}
+
+.reconnect-btn-cancel {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+}
+
+.reconnect-btn-cancel:hover {
+  background: var(--hover-bg);
+  border-color: #f14c4c;
+  color: #f14c4c;
+}
+
+/* 浅色主题下的重连提示 */
+body.light-theme .reconnect-notification {
+  background: #ffffff;
+  border-color: #ff9800;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+body.light-theme .reconnect-message {
+  color: #333333;
+}
+
+
 
 
 /* 分屏容器 */
@@ -1853,6 +1948,23 @@ body.light-theme .context-menu-item:hover {
 .tab-status.disconnected {
   background: #f48771;
   box-shadow: 0 0 6px #f48771;
+}
+
+.tab-status.reconnecting {
+  background: #ffa500;
+  box-shadow: 0 0 6px #ffa500;
+  animation: pulse-reconnect 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-reconnect {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.3);
+  }
 }
 
 @keyframes pulse-orange {

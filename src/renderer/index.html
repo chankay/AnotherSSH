@@ -105,6 +105,19 @@
           </div>
         </div>
         
+        <!-- 重连提示框 -->
+        <div class="reconnect-notification" id="reconnectNotification" style="display: none;">
+          <div class="reconnect-icon">⚠️</div>
+          <div class="reconnect-content">
+            <div class="reconnect-title">连接已断开</div>
+            <div class="reconnect-message" id="reconnectMessage">正在重连...</div>
+          </div>
+          <div class="reconnect-actions">
+            <button class="reconnect-btn" id="reconnectNowBtn">立即重连</button>
+            <button class="reconnect-btn reconnect-btn-cancel" id="cancelReconnectBtn">取消</button>
+          </div>
+        </div>
+        
         <div class="terminal-container" id="terminalContainer">
           <!-- 终端区域 -->
         </div>

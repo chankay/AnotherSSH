@@ -87,6 +87,10 @@ class SSHClient {
     // 同步输入相关
     this.syncInputMode = 'OFF'; // OFF / ALL / SPLIT
     
+    // 自动重连相关
+    this.reconnectConfig = new Map(); // sessionId -> { attempts, timer, interval, config }
+    this.userDisconnectedSessions = new Set(); // 用户主动断开的会话
+    
     this.init();
   }
 
@@ -423,6 +427,23 @@ class SSHClient {
           e.preventDefault();
           this.toggleSearch();
         }
+      }
+    });
+
+    // 重连按钮事件
+    document.getElementById('reconnectNowBtn').addEventListener('click', () => {
+      const notification = document.getElementById('reconnectNotification');
+      const sessionId = notification.dataset.sessionId;
+      if (sessionId) {
+        this.reconnectNow(sessionId);
+      }
+    });
+
+    document.getElementById('cancelReconnectBtn').addEventListener('click', () => {
+      const notification = document.getElementById('reconnectNotification');
+      const sessionId = notification.dataset.sessionId;
+      if (sessionId) {
+        this.cancelReconnect(sessionId);
       }
     });
   }
@@ -796,6 +817,14 @@ class SSHClient {
   }
 
   async closeSession(sessionId, skipStatusUpdate = false) {
+    // 标记为用户主动断开
+    if (!skipStatusUpdate) {
+      this.userDisconnectedSessions.add(sessionId);
+    }
+    
+    // 清理重连状态
+    this.clearReconnectState(sessionId);
+    
     // 更新状态为断开（除非是自动关闭）
     if (!skipStatusUpdate) {
       this.updateTabStatus(sessionId, 'disconnected');
@@ -842,7 +871,218 @@ class SSHClient {
   handleSSHClosed(data) {
     const { sessionId } = data;
     
+    // 检查是否为用户主动断开
+    if (this.userDisconnectedSessions.has(sessionId)) {
+      this.userDisconnectedSessions.delete(sessionId);
+      this.cleanupSession(sessionId);
+      return;
+    }
+    
     // 更新标签页状态为断开
+    this.updateTabStatus(sessionId, 'disconnected');
+    
+    // 在终端显示断开消息
+    const terminalData = this.terminals.get(sessionId);
+    if (terminalData) {
+      terminalData.terminal.write('\r\n\x1b[31m[连接已断开]\x1b[0m\r\n');
+    }
+    
+    // 检查是否应该自动重连
+    if (this.shouldAutoReconnect(sessionId)) {
+      this.startReconnect(sessionId);
+    } else {
+      // 3秒后自动关闭标签页
+      setTimeout(() => {
+        this.closeSession(sessionId, true);
+      }, 3000);
+    }
+  }
+
+  shouldAutoReconnect(sessionId) {
+    // 获取设置
+    const settings = JSON.parse(localStorage.getItem('appSettings') || '{}');
+    
+    // 检查是否启用自动重连（默认启用）
+    if (settings.autoReconnect === false) {
+      return false;
+    }
+    
+    // 检查终端是否还存在
+    const terminalData = this.terminals.get(sessionId);
+    if (!terminalData) {
+      return false;
+    }
+    
+    return true;
+  }
+
+  startReconnect(sessionId) {
+    const terminalData = this.terminals.get(sessionId);
+    if (!terminalData) return;
+    
+    // 获取设置
+    const settings = JSON.parse(localStorage.getItem('appSettings') || '{}');
+    const maxAttempts = settings.maxReconnectAttempts || 5;
+    const initialInterval = settings.reconnectInterval || 2000;
+    
+    // 初始化或获取重连配置
+    let config = this.reconnectConfig.get(sessionId);
+    if (!config) {
+      config = {
+        attempts: 0,
+        interval: initialInterval,
+        maxAttempts: maxAttempts,
+        config: terminalData.config
+      };
+      this.reconnectConfig.set(sessionId, config);
+    }
+    
+    config.attempts++;
+    
+    // 显示重连提示
+    this.showReconnectNotification(sessionId, config);
+    
+    // 更新标签页状态为重连中
+    this.updateTabStatus(sessionId, 'reconnecting');
+    
+    // 设置重连定时器
+    config.timer = setTimeout(() => {
+      this.attemptReconnect(sessionId);
+    }, config.interval);
+  }
+
+  showReconnectNotification(sessionId, config) {
+    const notification = document.getElementById('reconnectNotification');
+    const message = document.getElementById('reconnectMessage');
+    
+    const countdown = Math.ceil(config.interval / 1000);
+    message.textContent = `正在重连... (${config.attempts}/${config.maxAttempts}) - ${countdown}秒后重试`;
+    
+    notification.style.display = 'flex';
+    notification.dataset.sessionId = sessionId;
+    
+    // 倒计时更新
+    let remaining = countdown;
+    const countdownTimer = setInterval(() => {
+      remaining--;
+      if (remaining > 0) {
+        message.textContent = `正在重连... (${config.attempts}/${config.maxAttempts}) - ${remaining}秒后重试`;
+      } else {
+        clearInterval(countdownTimer);
+      }
+    }, 1000);
+    
+    // 保存定时器以便取消
+    config.countdownTimer = countdownTimer;
+  }
+
+  hideReconnectNotification() {
+    const notification = document.getElementById('reconnectNotification');
+    notification.style.display = 'none';
+    notification.dataset.sessionId = '';
+  }
+
+  async attemptReconnect(sessionId) {
+    const config = this.reconnectConfig.get(sessionId);
+    if (!config) return;
+    
+    const terminalData = this.terminals.get(sessionId);
+    if (!terminalData) {
+      this.clearReconnectState(sessionId);
+      return;
+    }
+    
+    try {
+      // 在终端显示重连尝试
+      terminalData.terminal.write(`\r\n\x1b[33m[尝试重连... (${config.attempts}/${config.maxAttempts})]\x1b[0m\r\n`);
+      
+      // 尝试重新连接
+      const result = await window.electronAPI.ssh.connect(config.config);
+      
+      if (result.success) {
+        // 重连成功
+        terminalData.terminal.write('\r\n\x1b[32m[重连成功]\x1b[0m\r\n');
+        this.showNotification('重连成功', 'success');
+        this.updateTabStatus(sessionId, 'connected');
+        this.clearReconnectState(sessionId);
+        
+        // 更新 sessionId（可能变化了）
+        if (result.sessionId !== sessionId) {
+          // 处理 sessionId 变化的情况
+          this.terminals.set(result.sessionId, terminalData);
+          this.terminals.delete(sessionId);
+        }
+      } else {
+        throw new Error(result.error || '连接失败');
+      }
+      
+    } catch (error) {
+      // 重连失败
+      terminalData.terminal.write(`\r\n\x1b[31m[重连失败: ${error.message}]\x1b[0m\r\n`);
+      
+      if (config.attempts >= config.maxAttempts) {
+        // 达到最大次数
+        terminalData.terminal.write('\r\n\x1b[31m[已达到最大重连次数，停止重连]\x1b[0m\r\n');
+        this.showNotification('重连失败，已达到最大尝试次数', 'error');
+        this.clearReconnectState(sessionId);
+        
+        // 3秒后关闭标签页
+        setTimeout(() => {
+          this.closeSession(sessionId, true);
+        }, 3000);
+      } else {
+        // 继续重连，使用指数退避
+        const settings = JSON.parse(localStorage.getItem('appSettings') || '{}');
+        const maxInterval = settings.maxReconnectInterval || 30000;
+        config.interval = Math.min(config.interval * 2, maxInterval);
+        this.startReconnect(sessionId);
+      }
+    }
+  }
+
+  cancelReconnect(sessionId) {
+    const config = this.reconnectConfig.get(sessionId);
+    if (config) {
+      if (config.timer) {
+        clearTimeout(config.timer);
+      }
+      if (config.countdownTimer) {
+        clearInterval(config.countdownTimer);
+      }
+    }
+    
+    this.clearReconnectState(sessionId);
+    
+    const terminalData = this.terminals.get(sessionId);
+    if (terminalData) {
+      terminalData.terminal.write('\r\n\x1b[33m[已取消自动重连]\x1b[0m\r\n');
+    }
+    
+    // 3秒后关闭标签页
+    setTimeout(() => {
+      this.closeSession(sessionId, true);
+    }, 3000);
+  }
+
+  clearReconnectState(sessionId) {
+    const config = this.reconnectConfig.get(sessionId);
+    if (config) {
+      if (config.timer) {
+        clearTimeout(config.timer);
+      }
+      if (config.countdownTimer) {
+        clearInterval(config.countdownTimer);
+      }
+    }
+    this.reconnectConfig.delete(sessionId);
+    this.hideReconnectNotification();
+  }
+
+  cleanupSession(sessionId) {
+    // 清理重连状态
+    this.clearReconnectState(sessionId);
+    
+    // 更新标签页状态
     this.updateTabStatus(sessionId, 'disconnected');
     
     // 在终端显示断开消息
@@ -853,8 +1093,24 @@ class SSHClient {
     
     // 3秒后自动关闭标签页
     setTimeout(() => {
-      this.closeSession(sessionId, true); // skipStatusUpdate = true
+      this.closeSession(sessionId, true);
     }, 3000);
+  }
+
+  reconnectNow(sessionId) {
+    const config = this.reconnectConfig.get(sessionId);
+    if (!config) return;
+    
+    // 取消当前的定时器
+    if (config.timer) {
+      clearTimeout(config.timer);
+    }
+    if (config.countdownTimer) {
+      clearInterval(config.countdownTimer);
+    }
+    
+    // 立即尝试重连
+    this.attemptReconnect(sessionId);
   }
 
   async loadSessions() {
