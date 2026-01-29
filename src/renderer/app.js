@@ -22,7 +22,8 @@ if (!window.electronAPI) {
       saveEncrypted: (sessions) => window.ipcRenderer.invoke('session:saveEncrypted', sessions),
       delete: (sessionId) => window.ipcRenderer.invoke('session:delete', sessionId),
       export: () => window.ipcRenderer.invoke('session:export'),
-      import: () => window.ipcRenderer.invoke('session:import')
+      import: () => window.ipcRenderer.invoke('session:import'),
+      browseKey: () => window.ipcRenderer.invoke('session:browseKey')
     },
     sftp: {
       connect: (sessionId, config) => window.ipcRenderer.invoke('sftp:connect', { sessionId, config }),
@@ -238,6 +239,19 @@ class SSHClient {
       const isPassword = e.target.value === 'password';
       document.getElementById('passwordGroup').style.display = isPassword ? 'block' : 'none';
       document.getElementById('keyGroup').style.display = isPassword ? 'none' : 'block';
+    });
+
+    // 浏览密钥文件按钮
+    document.getElementById('browseKeyBtn').addEventListener('click', async () => {
+      try {
+        const result = await window.electronAPI.session.browseKey();
+        if (result.success && result.filePath) {
+          document.getElementById('privateKey').value = result.filePath;
+        }
+      } catch (error) {
+        console.error('Failed to browse key file:', error);
+        this.showNotification('选择文件失败', 'error');
+      }
     });
 
     document.getElementById('connectForm').addEventListener('submit', (e) => {
@@ -918,6 +932,7 @@ class SSHClient {
           // 右键菜单
           item.addEventListener('contextmenu', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             this.showSessionContextMenu(e, session);
           });
 
@@ -1085,6 +1100,11 @@ class SSHClient {
 
   showSessionContextMenu(event, session) {
     const menu = document.getElementById('sessionContextMenu');
+    
+    if (!menu) {
+      console.error('sessionContextMenu element not found');
+      return;
+    }
     
     // 显示菜单
     menu.style.display = 'block';

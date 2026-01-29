@@ -161,7 +161,10 @@
         </div>
         <div class="form-group" id="keyGroup" style="display: none;">
           <label>私钥路径:</label>
-          <input type="text" id="privateKey">
+          <div class="input-with-button">
+            <input type="text" id="privateKey" placeholder="点击浏览选择密钥文件">
+            <button type="button" id="browseKeyBtn" class="btn-browse">浏览...</button>
+          </div>
         </div>
         <div class="form-actions">
           <button type="submit" class="btn-primary" id="connectSubmitBtn">连接</button>

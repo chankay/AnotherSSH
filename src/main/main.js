@@ -19,7 +19,8 @@ function createWindow() {
     height: 800,
     webPreferences: {
       nodeIntegration: true,
-      contextIsolation: false
+      contextIsolation: false,
+      enableRemoteModule: true
     }
   });
 
@@ -51,6 +52,16 @@ app.on('activate', () => {
 // IPC handlers
 ipcMain.handle('ssh:connect', async (event, config) => {
   try {
+    // 如果使用密钥认证，读取密钥文件内容
+    if (config.privateKey && !Buffer.isBuffer(config.privateKey)) {
+      const fs = require('fs');
+      try {
+        config.privateKey = fs.readFileSync(config.privateKey);
+      } catch (error) {
+        return { success: false, error: `无法读取密钥文件: ${error.message}` };
+      }
+    }
+    
     let resolvedSessionId = null;
     const sessionId = await sshManager.connect(
       config, 
@@ -188,6 +199,27 @@ ipcMain.handle('session:import', async (event) => {
     }
 
     return sessionStore.importSessions(result.filePaths[0]);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('session:browseKey', async (event) => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: '选择私钥文件',
+      filters: [
+        { name: 'Private Key Files', extensions: ['pem', 'key', 'ppk', '*'] },
+        { name: 'All Files', extensions: ['*'] }
+      ],
+      properties: ['openFile']
+    });
+
+    if (result.canceled) {
+      return { success: false, error: 'User canceled' };
+    }
+
+    return { success: true, filePath: result.filePaths[0] };
   } catch (error) {
     return { success: false, error: error.message };
   }

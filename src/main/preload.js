@@ -15,7 +15,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     saveEncrypted: (sessions) => ipcRenderer.invoke('session:saveEncrypted', sessions),
     delete: (sessionId) => ipcRenderer.invoke('session:delete', sessionId),
     export: () => ipcRenderer.invoke('session:export'),
-    import: () => ipcRenderer.invoke('session:import')
+    import: () => ipcRenderer.invoke('session:import'),
+    browseKey: () => ipcRenderer.invoke('session:browseKey')
   },
   sftp: {
     connect: (sessionId, config) => ipcRenderer.invoke('sftp:connect', { sessionId, config }),
