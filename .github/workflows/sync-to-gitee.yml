@@ -14,13 +14,30 @@ jobs:
   sync-code:
     runs-on: ubuntu-latest
     steps:
-      - name: Sync to Gitee
-        uses: wearerequired/git-mirror-action@v1
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.GITEE_SSH_PRIVATE_KEY }}
+      - name: Checkout code
+        uses: actions/checkout@v3
         with:
-          source-repo: git@github.com:chankay/anotherssh.git
-          destination-repo: git@gitee.com:chankay/anotherssh.git
+          fetch-depth: 0  # 获取完整历史记录
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.GITEE_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan gitee.com >> ~/.ssh/known_hosts
+
+      - name: Push to Gitee
+        run: |
+          # 添加 Gitee 远程仓库
+          git remote add gitee git@gitee.com:chankay/anotherssh.git || true
+          
+          # 推送所有分支和标签
+          git push -f gitee main
+          git push -f gitee --tags
+
+      - name: Cleanup
+        if: always()
+        run: rm -f ~/.ssh/id_rsa
 
   # 同步 Release 和附件到 Gitee
   sync-release:
