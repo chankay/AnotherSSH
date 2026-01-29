@@ -55,7 +55,15 @@
 
 ## 📥 下载
 
-访问 [Releases 页面](https://github.com/chankay/anotherssh/releases) 下载最新版本：
+### GitHub（推荐）
+
+访问 [GitHub Releases](https://github.com/chankay/anotherssh/releases) 下载最新版本：
+
+### Gitee（国内镜像）
+
+访问 [Gitee Releases](https://gitee.com/chankay/anotherssh/releases) 下载最新版本（国内访问更快）：
+
+### 安装包
 
 - **macOS**: `AnotherSSH-{version}-mac-arm64.dmg` (Apple Silicon) 或 `AnotherSSH-{version}-mac-x64.dmg` (Intel)
 - **Windows**: `AnotherSSH-{version}-win-x64.exe` (Intel/AMD 64位) 或 `AnotherSSH-{version}-win-arm64.exe` (ARM64)

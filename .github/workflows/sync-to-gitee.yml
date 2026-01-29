@@ -1,0 +1,109 @@
+name: Sync to Gitee
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  release:
+    types: [published]
+
+jobs:
+  # 同步代码到 Gitee
+  sync-code:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync to Gitee
+        uses: wearerequired/git-mirror-action@v1
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.GITEE_SSH_PRIVATE_KEY }}
+        with:
+          source-repo: git@github.com:chankay/anotherssh.git
+          destination-repo: git@gitee.com:chankay/anotherssh.git
+
+  # 同步 Release 和附件到 Gitee
+  sync-release:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'published'
+    needs: sync-code
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Get release info
+        id: release_info
+        run: |
+          echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          echo "RELEASE_NAME=${{ github.event.release.name }}" >> $GITHUB_OUTPUT
+
+      - name: Download release assets from GitHub
+        run: |
+          mkdir -p release_assets
+          gh release download ${{ steps.release_info.outputs.TAG_NAME }} -D release_assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Gitee Release and Upload Assets
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+        run: |
+          TAG_NAME="${{ steps.release_info.outputs.TAG_NAME }}"
+          RELEASE_NAME="${{ github.event.release.name }}"
+          
+          # 转义 release body 中的特殊字符
+          RELEASE_BODY=$(cat << 'EOF' | jq -Rs .
+          ${{ github.event.release.body }}
+          EOF
+          )
+          
+          echo "Creating Gitee Release for ${TAG_NAME}..."
+          
+          # 创建 Gitee Release
+          RESPONSE=$(curl -s -X POST "https://gitee.com/api/v5/repos/chankay/anotherssh/releases" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"access_token\": \"${GITEE_TOKEN}\",
+              \"tag_name\": \"${TAG_NAME}\",
+              \"name\": \"${RELEASE_NAME}\",
+              \"body\": ${RELEASE_BODY},
+              \"prerelease\": false,
+              \"target_commitish\": \"main\"
+            }")
+          
+          echo "Gitee API Response: $RESPONSE"
+          
+          # 提取 release id
+          RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
+          
+          if [ "$RELEASE_ID" = "null" ] || [ -z "$RELEASE_ID" ]; then
+            echo "Failed to create Gitee release"
+            echo "Response: $RESPONSE"
+            exit 1
+          fi
+          
+          echo "Gitee Release created with ID: $RELEASE_ID"
+          
+          # 上传所有附件
+          for file in release_assets/*; do
+            if [ -f "$file" ]; then
+              filename=$(basename "$file")
+              echo "Uploading ${filename}..."
+              
+              curl -X POST "https://gitee.com/api/v5/repos/chankay/anotherssh/releases/${RELEASE_ID}/attach_files" \
+                -F "access_token=${GITEE_TOKEN}" \
+                -F "file=@${file}"
+              
+              echo "Uploaded ${filename}"
+            fi
+          done
+          
+          echo "All assets uploaded successfully!"
+
+      - name: Notify completion
+        if: success()
+        run: |
+          echo "✅ Successfully synced release ${{ steps.release_info.outputs.TAG_NAME }} to Gitee"
+          echo "🔗 GitHub Release: ${{ github.event.release.html_url }}"
+          echo "🔗 Gitee Release: https://gitee.com/chankay/anotherssh/releases/${{ steps.release_info.outputs.TAG_NAME }}"
+
