@@ -32,13 +32,13 @@
     "electron-builder": "^24.9.1"
   },
   "dependencies": {
-    "ssh2": "^1.15.0",
-    "ssh2-sftp-client": "^10.0.3",
-    "webdav": "^5.8.0",
-    "@xterm/xterm": "^5.5.0",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/addon-search": "^0.15.0",
-    "@xterm/addon-web-links": "^0.11.0"
+    "@xterm/addon-web-links": "^0.11.0",
+    "@xterm/xterm": "^5.5.0",
+    "ssh2": "^1.15.0",
+    "ssh2-sftp-client": "^10.0.3",
+    "webdav": "^5.8.0"
   },
   "build": {
     "appId": "com.anotherssh.app",

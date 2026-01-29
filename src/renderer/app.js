@@ -363,6 +363,68 @@ class SSHClient {
     document.getElementById('syncInputBtn').addEventListener('click', () => {
       this.toggleSyncInput();
     });
+
+    // 搜索按钮事件
+    document.getElementById('searchBtn').addEventListener('click', () => {
+      this.toggleSearch();
+    });
+
+    // 搜索框事件
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      this.performSearch(e.target.value);
+    });
+
+    document.getElementById('searchInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          this.searchPrevious();
+        } else {
+          this.searchNext();
+        }
+      } else if (e.key === 'Escape') {
+        this.closeSearch();
+      }
+    });
+
+    document.getElementById('searchClearBtn').addEventListener('click', () => {
+      document.getElementById('searchInput').value = '';
+      this.performSearch('');
+    });
+
+    document.getElementById('searchPrevBtn').addEventListener('click', () => {
+      this.searchPrevious();
+    });
+
+    document.getElementById('searchNextBtn').addEventListener('click', () => {
+      this.searchNext();
+    });
+
+    document.getElementById('searchCaseSensitiveBtn').addEventListener('click', (e) => {
+      e.target.classList.toggle('active');
+      this.performSearch(document.getElementById('searchInput').value);
+    });
+
+    document.getElementById('searchRegexBtn').addEventListener('click', (e) => {
+      e.target.classList.toggle('active');
+      this.performSearch(document.getElementById('searchInput').value);
+    });
+
+    document.getElementById('searchCloseBtn').addEventListener('click', () => {
+      this.closeSearch();
+    });
+
+    // 全局快捷键
+    document.addEventListener('keydown', (e) => {
+      // Ctrl/Cmd + F 打开搜索
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f' && !e.shiftKey) {
+        const activeTerminal = this.terminals.get(this.activeSessionId);
+        if (activeTerminal && document.getElementById('terminalToolbar').style.display !== 'none') {
+          e.preventDefault();
+          this.toggleSearch();
+        }
+      }
+    });
   }
 
   showConnectDialog() {
@@ -541,7 +603,8 @@ class SSHClient {
         background: '#1e1e1e',
         foreground: '#d4d4d4'
       },
-      scrollback: 1000
+      scrollback: 1000,
+      allowProposedApi: true
     });
 
     const fitAddon = new window.FitAddon();
@@ -3039,7 +3102,8 @@ class SSHClient {
           background: '#1e1e1e',
           foreground: '#d4d4d4'
         },
-        scrollback: 1000
+        scrollback: 1000,
+        allowProposedApi: true
       });
 
       const fitAddon = new window.FitAddon();
@@ -3370,6 +3434,119 @@ class SSHClient {
         window.electronAPI.ssh.send(sessionId, data);
       }
     }
+  }
+
+  // ========== 终端搜索功能 ==========
+
+  toggleSearch() {
+    const searchBox = document.getElementById('terminalSearchBox');
+    const searchInput = document.getElementById('searchInput');
+    
+    if (searchBox.style.display === 'none') {
+      searchBox.style.display = 'flex';
+      searchInput.focus();
+      searchInput.select();
+    } else {
+      this.closeSearch();
+    }
+  }
+
+  closeSearch() {
+    const searchBox = document.getElementById('terminalSearchBox');
+    const searchInput = document.getElementById('searchInput');
+    
+    searchBox.style.display = 'none';
+    searchInput.value = '';
+    
+    // 清除高亮
+    const terminalData = this.terminals.get(this.activeSessionId);
+    if (terminalData && terminalData.searchAddon) {
+      terminalData.searchAddon.clearDecorations();
+    }
+    
+    // 恢复终端焦点
+    if (terminalData) {
+      terminalData.terminal.focus();
+    }
+  }
+
+  performSearch(keyword) {
+    const searchInput = document.getElementById('searchInput');
+    const clearBtn = document.getElementById('searchClearBtn');
+    const caseSensitiveBtn = document.getElementById('searchCaseSensitiveBtn');
+    const regexBtn = document.getElementById('searchRegexBtn');
+    
+    // 显示/隐藏清除按钮
+    clearBtn.style.display = keyword ? 'block' : 'none';
+    
+    if (!keyword) {
+      document.getElementById('searchCount').textContent = '0/0';
+      const terminalData = this.terminals.get(this.activeSessionId);
+      if (terminalData && terminalData.searchAddon) {
+        terminalData.searchAddon.clearDecorations();
+      }
+      return;
+    }
+    
+    const terminalData = this.terminals.get(this.activeSessionId);
+    if (!terminalData || !terminalData.searchAddon) {
+      return;
+    }
+    
+    const options = {
+      caseSensitive: caseSensitiveBtn.classList.contains('active'),
+      regex: regexBtn.classList.contains('active')
+    };
+    
+    try {
+      const found = terminalData.searchAddon.findNext(keyword, options);
+      // 注意：xterm.js 的 SearchAddon 不直接返回匹配数量
+      // 这里简化处理，只显示是否找到
+      if (found) {
+        document.getElementById('searchCount').textContent = '已找到';
+      } else {
+        document.getElementById('searchCount').textContent = '无匹配';
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      document.getElementById('searchCount').textContent = '错误';
+    }
+  }
+
+  searchNext() {
+    const keyword = document.getElementById('searchInput').value;
+    if (!keyword) return;
+    
+    const terminalData = this.terminals.get(this.activeSessionId);
+    if (!terminalData || !terminalData.searchAddon) return;
+    
+    const caseSensitiveBtn = document.getElementById('searchCaseSensitiveBtn');
+    const regexBtn = document.getElementById('searchRegexBtn');
+    
+    const options = {
+      caseSensitive: caseSensitiveBtn.classList.contains('active'),
+      regex: regexBtn.classList.contains('active')
+    };
+    
+    terminalData.searchAddon.findNext(keyword, options);
+  }
+
+  searchPrevious() {
+    const keyword = document.getElementById('searchInput').value;
+    if (!keyword) return;
+    
+    const terminalData = this.terminals.get(this.activeSessionId);
+    if (!terminalData || !terminalData.searchAddon) return;
+    
+    const caseSensitiveBtn = document.getElementById('searchCaseSensitiveBtn');
+    const regexBtn = document.getElementById('searchRegexBtn');
+    
+    const options = {
+      caseSensitive: caseSensitiveBtn.classList.contains('active'),
+      regex: regexBtn.classList.contains('active')
+    };
+    
+    terminalData.searchAddon.findPrevious(keyword, options);
   }
 }
 

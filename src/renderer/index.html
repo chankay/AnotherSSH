@@ -70,7 +70,41 @@
             </svg>
             <span id="syncInputText">同步: 关</span>
           </button>
+          <div class="toolbar-divider"></div>
+          <button class="toolbar-btn" id="searchBtn" title="搜索终端内容 (Ctrl+F)">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+            </svg>
+          </button>
         </div>
+        
+        <!-- 搜索框 -->
+        <div class="terminal-search-box" id="terminalSearchBox" style="display: none;">
+          <div class="search-input-wrapper">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" class="search-icon">
+              <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+            </svg>
+            <input type="text" id="searchInput" placeholder="搜索..." />
+            <button class="search-clear-btn" id="searchClearBtn" title="清除" style="display: none;">✕</button>
+          </div>
+          <div class="search-controls">
+            <button class="search-nav-btn" id="searchPrevBtn" title="上一个 (Shift+Enter)">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 12l-4-4h8z"/>
+              </svg>
+            </button>
+            <button class="search-nav-btn" id="searchNextBtn" title="下一个 (Enter)">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 4l4 4H4z"/>
+              </svg>
+            </button>
+            <span class="search-count" id="searchCount">0/0</span>
+            <button class="search-option-btn" id="searchCaseSensitiveBtn" title="区分大小写">Aa</button>
+            <button class="search-option-btn" id="searchRegexBtn" title="正则表达式">.*</button>
+            <button class="search-close-btn" id="searchCloseBtn" title="关闭 (Esc)">✕</button>
+          </div>
+        </div>
+        
         <div class="terminal-container" id="terminalContainer">
           <!-- 终端区域 -->
         </div>
