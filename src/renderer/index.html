@@ -44,6 +44,25 @@
         <!-- 标签页 -->
       </div>
       <div class="content-area">
+        <div class="terminal-toolbar" id="terminalToolbar" style="display: none;">
+          <button class="toolbar-btn" id="splitHorizontalBtn" title="水平分屏 (Ctrl+Shift+D)">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <rect x="1" y="1" width="14" height="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+              <rect x="1" y="9" width="14" height="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+            </svg>
+          </button>
+          <button class="toolbar-btn" id="splitVerticalBtn" title="垂直分屏 (Ctrl+Shift+E)">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <rect x="1" y="1" width="6" height="14" fill="none" stroke="currentColor" stroke-width="1.5"/>
+              <rect x="9" y="1" width="6" height="14" fill="none" stroke="currentColor" stroke-width="1.5"/>
+            </svg>
+          </button>
+          <button class="toolbar-btn" id="closeSplitBtn" title="关闭分屏" style="display: none;">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 6.6L13.3 1.3c.4-.4 1-.4 1.4 0 .4.4.4 1 0 1.4L9.4 8l5.3 5.3c.4.4.4 1 0 1.4-.4.4-1 .4-1.4 0L8 9.4l-5.3 5.3c-.4.4-1 .4-1.4 0-.4-.4-.4-1 0-1.4L6.6 8 1.3 2.7c-.4-.4-.4-1 0-1.4.4-.4 1-.4 1.4 0L8 6.6z"/>
+            </svg>
+          </button>
+        </div>
         <div class="terminal-container" id="terminalContainer">
           <!-- 终端区域 -->
         </div>
@@ -167,6 +186,39 @@
       <div class="form-actions">
         <button type="button" id="confirmDialogOk" class="btn-primary">确定</button>
         <button type="button" id="confirmDialogCancel" class="btn-secondary">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 分屏会话选择对话框 -->
+  <div id="splitSessionDialog" class="dialog" style="display: none;">
+    <div class="dialog-content">
+      <h3 id="splitSessionDialogTitle">选择分屏会话</h3>
+      <div class="split-session-options">
+        <button type="button" id="splitNewSessionBtn" class="split-option-btn">
+          <svg width="24" height="24" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2z"/>
+          </svg>
+          <span>新建连接</span>
+        </button>
+        <button type="button" id="splitSavedSessionBtn" class="split-option-btn">
+          <svg width="24" height="24" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H4z"/>
+            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+          </svg>
+          <span>选择已保存会话</span>
+        </button>
+      </div>
+      <div id="savedSessionsList" class="saved-sessions-list" style="display: none;">
+        <div class="session-search-box">
+          <input type="text" id="splitSessionSearch" placeholder="搜索会话...">
+        </div>
+        <div id="splitSessionsContainer" class="split-sessions-container">
+          <!-- 会话列表将在这里动态生成 -->
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" id="splitSessionCancelBtn" class="btn-secondary">取消</button>
       </div>
     </div>
   </div>

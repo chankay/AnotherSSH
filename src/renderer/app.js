@@ -78,6 +78,11 @@ class SSHClient {
     this.selectedFiles = new Set();
     this.currentTransferId = null;
     this.settingsDialogInitialized = false; // 标记设置对话框是否已初始化
+    
+    // 分屏相关
+    this.splitSessions = new Map(); // sessionId -> { layout, panes: [] }
+    this.activePaneId = null;
+    
     this.init();
   }
 
@@ -289,11 +294,52 @@ class SSHClient {
           }
         });
       }
+      // Ctrl/Cmd + Shift + D: 水平分屏
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'D') {
+        e.preventDefault();
+        this.splitTerminal('horizontal');
+      }
+      // Ctrl/Cmd + Shift + E: 垂直分屏
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'E') {
+        e.preventDefault();
+        this.splitTerminal('vertical');
+      }
     });
 
     // 点击版本号检查更新
     document.getElementById('statusVersion').addEventListener('click', () => {
       this.checkForUpdates(true);
+    });
+
+    // 分屏按钮事件
+    document.getElementById('splitHorizontalBtn').addEventListener('click', () => {
+      this.splitTerminal('horizontal');
+    });
+
+    document.getElementById('splitVerticalBtn').addEventListener('click', () => {
+      this.splitTerminal('vertical');
+    });
+
+    document.getElementById('closeSplitBtn').addEventListener('click', () => {
+      this.closeSplit();
+    });
+
+    // 分屏会话选择对话框事件
+    document.getElementById('splitNewSessionBtn').addEventListener('click', () => {
+      this.showSplitConnectDialog();
+    });
+
+    document.getElementById('splitSavedSessionBtn').addEventListener('click', () => {
+      this.showSavedSessionsList();
+    });
+
+    document.getElementById('splitSessionCancelBtn').addEventListener('click', () => {
+      document.getElementById('splitSessionDialog').style.display = 'none';
+      this.pendingSplitLayout = null;
+    });
+
+    document.getElementById('splitSessionSearch').addEventListener('input', (e) => {
+      this.filterSplitSessions(e.target.value);
     });
   }
 
@@ -358,6 +404,21 @@ class SSHClient {
         this.showAlert('会话已更新');
         return;
       }
+    }
+
+    // 检查是否是分屏连接
+    if (this.pendingSplitLayout) {
+      const layout = this.pendingSplitLayout;
+      this.pendingSplitLayout = null;
+      
+      // 创建分屏面板
+      const result = await this.createSplitPane(this.activeSessionId, layout, config);
+      
+      if (result) {
+        this.hideConnectDialog();
+        this.showNotification('分屏创建成功', 'success');
+      }
+      return;
     }
 
     try {
@@ -501,6 +562,9 @@ class SSHClient {
     this.createTab(sessionId, config);
     this.switchToSession(sessionId);
     
+    // 显示终端工具栏（分屏按钮）
+    document.getElementById('terminalToolbar').style.display = 'flex';
+    
     // 连接成功后更新状态为已连接
     setTimeout(() => {
       this.updateTabStatus(sessionId, 'connected');
@@ -540,41 +604,58 @@ class SSHClient {
   }
 
   switchToSession(sessionId) {
-    // 隐藏所有终端
-    document.querySelectorAll('.terminal-wrapper').forEach(el => {
-      el.classList.remove('active');
-    });
+    // 隐藏 SFTP 容器，显示终端容器
+    document.getElementById('sftpContainer').style.display = 'none';
+    document.getElementById('terminalContainer').style.display = 'flex';
 
     // 取消所有标签的激活状态
     document.querySelectorAll('.tab').forEach(el => {
       el.classList.remove('active');
     });
 
-    // 隐藏 SFTP 容器，显示终端容器
-    document.getElementById('sftpContainer').style.display = 'none';
-    document.getElementById('terminalContainer').style.display = 'block';
-
-    // 激活选中的终端和标签
-    const terminalWrapper = document.getElementById(`terminal-${sessionId}`);
+    // 激活选中的标签
     const tab = document.getElementById(`tab-${sessionId}`);
-    
-    if (terminalWrapper) terminalWrapper.classList.add('active');
     if (tab) tab.classList.add('active');
 
     this.activeSessionId = sessionId;
 
+    // 检查是否是分屏会话
+    if (this.splitSessions.has(sessionId)) {
+      // 显示工具栏和关闭分屏按钮
+      document.getElementById('terminalToolbar').style.display = 'flex';
+      document.getElementById('closeSplitBtn').style.display = 'flex';
+      
+      // 渲染分屏
+      this.renderSplitPanes(sessionId);
+    } else {
+      // 显示工具栏，但隐藏关闭分屏按钮
+      document.getElementById('terminalToolbar').style.display = 'flex';
+      document.getElementById('closeSplitBtn').style.display = 'none';
+      
+      // 隐藏所有终端
+      document.querySelectorAll('.terminal-wrapper').forEach(el => {
+        el.classList.remove('active');
+      });
+
+      // 激活选中的终端
+      const terminalWrapper = document.getElementById(`terminal-${sessionId}`);
+      if (terminalWrapper) {
+        terminalWrapper.classList.add('active');
+      }
+
+      // 重新调整终端大小并聚焦
+      const terminalData = this.terminals.get(sessionId);
+      if (terminalData) {
+        setTimeout(() => {
+          terminalData.fitAddon.fit();
+          // 自动聚焦到终端
+          terminalData.terminal.focus();
+        }, 100);
+      }
+    }
+
     // 更新状态栏
     this.updateStatusBar(sessionId);
-
-    // 重新调整终端大小并聚焦
-    const terminalData = this.terminals.get(sessionId);
-    if (terminalData) {
-      setTimeout(() => {
-        terminalData.fitAddon.fit();
-        // 自动聚焦到终端
-        terminalData.terminal.focus();
-      }, 100);
-    }
   }
 
   updateStatusBar(sessionId) {
@@ -2739,6 +2820,429 @@ class SSHClient {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  // ========== 终端分屏功能 ==========
+
+  splitTerminal(layout = 'horizontal') {
+    if (!this.activeSessionId || this.activeSessionId.startsWith('sftp-')) {
+      this.showNotification('请先连接一个 SSH 会话', 'error');
+      return;
+    }
+
+    // 检查分屏数量限制
+    if (this.splitSessions.has(this.activeSessionId)) {
+      const splitData = this.splitSessions.get(this.activeSessionId);
+      if (splitData.panes.length >= 4) {
+        this.showNotification('最多支持 4 个分屏', 'info');
+        return;
+      }
+      // 如果已经有分屏，继续添加（保持当前布局或升级为网格）
+      layout = this.determineLayout(splitData.panes.length + 1);
+    }
+
+    // 显示会话选择对话框
+    this.showSplitSessionDialog(layout);
+  }
+
+  determineLayout(paneCount) {
+    // 根据分屏数量决定布局
+    if (paneCount <= 2) {
+      // 2 个分屏，保持原有布局（水平或垂直）
+      if (this.splitSessions.has(this.activeSessionId)) {
+        return this.splitSessions.get(this.activeSessionId).layout;
+      }
+      return 'horizontal'; // 默认水平
+    } else if (paneCount === 3) {
+      // 3 个分屏，使用网格布局
+      return 'grid-3';
+    } else {
+      // 4 个分屏，使用 2x2 网格
+      return 'grid-4';
+    }
+  }
+
+  showSplitSessionDialog(layout) {
+    // 保存分屏布局信息
+    this.pendingSplitLayout = layout;
+    
+    const dialog = document.getElementById('splitSessionDialog');
+    const title = document.getElementById('splitSessionDialogTitle');
+    title.textContent = `选择分屏会话 (${layout === 'horizontal' ? '水平' : '垂直'})`;
+    
+    // 重置对话框状态
+    document.getElementById('savedSessionsList').style.display = 'none';
+    document.querySelector('.split-session-options').style.display = 'flex';
+    
+    dialog.style.display = 'flex';
+  }
+
+  showSplitConnectDialog() {
+    // 隐藏会话选择对话框
+    document.getElementById('splitSessionDialog').style.display = 'none';
+    
+    // 显示连接对话框
+    this.showConnectDialog();
+    
+    // 修改对话框标题
+    const layout = this.pendingSplitLayout;
+    document.querySelector('#connectDialog h3').textContent = `新建分屏 (${layout === 'horizontal' ? '水平' : '垂直'})`;
+    document.getElementById('connectSubmitBtn').textContent = '连接并分屏';
+    document.getElementById('saveSession').parentElement.style.display = 'none';
+  }
+
+  showSavedSessionsList() {
+    // 隐藏选项按钮，显示会话列表
+    document.querySelector('.split-session-options').style.display = 'none';
+    document.getElementById('savedSessionsList').style.display = 'block';
+    
+    // 渲染会话列表
+    this.renderSplitSessionsList();
+  }
+
+  renderSplitSessionsList(filter = '') {
+    const container = document.getElementById('splitSessionsContainer');
+    const sessions = this.savedSessions.filter(session => {
+      if (!filter) return true;
+      const searchText = filter.toLowerCase();
+      return (
+        session.name?.toLowerCase().includes(searchText) ||
+        session.host?.toLowerCase().includes(searchText) ||
+        session.username?.toLowerCase().includes(searchText) ||
+        session.group?.toLowerCase().includes(searchText)
+      );
+    });
+
+    if (sessions.length === 0) {
+      container.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">没有找到会话</div>';
+      return;
+    }
+
+    container.innerHTML = sessions.map(session => `
+      <div class="split-session-item" data-session-id="${session.id}">
+        <div class="split-session-name">
+          ${session.group ? `<span class="split-session-group">${session.group}</span>` : ''}
+          ${session.name || `${session.username}@${session.host}`}
+        </div>
+        <div class="split-session-info">
+          ${session.username}@${session.host}:${session.port || 22}
+        </div>
+      </div>
+    `).join('');
+
+    // 添加点击事件
+    container.querySelectorAll('.split-session-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const sessionId = item.dataset.sessionId;
+        this.connectSplitWithSavedSession(sessionId);
+      });
+    });
+  }
+
+  filterSplitSessions(query) {
+    this.renderSplitSessionsList(query);
+  }
+
+  async connectSplitWithSavedSession(sessionId) {
+    const session = this.savedSessions.find(s => s.id === sessionId);
+    if (!session) {
+      this.showNotification('会话不存在', 'error');
+      return;
+    }
+
+    // 隐藏对话框
+    document.getElementById('splitSessionDialog').style.display = 'none';
+
+    // 创建配置对象
+    const config = { ...session };
+
+    // 创建分屏面板
+    const layout = this.pendingSplitLayout;
+    this.pendingSplitLayout = null;
+
+    const result = await this.createSplitPane(this.activeSessionId, layout, config);
+
+    if (result) {
+      this.showNotification('分屏创建成功', 'success');
+    }
+  }
+
+  async createSplitPane(parentSessionId, layout, config) {
+    const paneId = `pane-${Date.now()}`;
+    
+    try {
+      // 连接新的 SSH 会话
+      const result = await window.electronAPI.ssh.connect(config);
+      
+      if (!result.success) {
+        this.showNotification('连接失败: ' + result.error, 'error');
+        return null;
+      }
+
+      const sshSessionId = result.sessionId;
+      
+      // 加载保存的设置
+      const settings = JSON.parse(localStorage.getItem('appSettings') || '{}');
+      
+      // 创建终端实例
+      const terminal = new window.Terminal({
+        cursorBlink: settings.cursorBlink !== false,
+        fontSize: settings.fontSize || 14,
+        fontFamily: settings.fontFamily || 'Menlo, Monaco, "Courier New", monospace',
+        cursorStyle: settings.cursorStyle || 'block',
+        theme: {
+          background: '#1e1e1e',
+          foreground: '#d4d4d4'
+        },
+        scrollback: 1000
+      });
+
+      const fitAddon = new window.FitAddon();
+      const searchAddon = new window.SearchAddon();
+      
+      terminal.loadAddon(fitAddon);
+      terminal.loadAddon(searchAddon);
+
+      // 监听终端输入
+      terminal.onData((data) => {
+        window.electronAPI.ssh.send(sshSessionId, data);
+      });
+
+      // 初始化终端大小
+      window.electronAPI.ssh.resize(sshSessionId, terminal.cols, terminal.rows);
+      
+      // 保存终端数据
+      this.terminals.set(sshSessionId, {
+        terminal,
+        fitAddon,
+        searchAddon,
+        config,
+        parentSessionId,
+        paneId
+      });
+
+      // 如果是第一次分屏，需要初始化分屏容器
+      if (!this.splitSessions.has(parentSessionId)) {
+        await this.initializeSplitContainer(parentSessionId, layout);
+      }
+
+      // 添加分屏面板
+      const splitData = this.splitSessions.get(parentSessionId);
+      splitData.panes.push({
+        paneId,
+        sshSessionId,
+        config,
+        terminal,
+        fitAddon
+      });
+
+      // 根据分屏数量更新布局
+      const newLayout = this.determineLayout(splitData.panes.length);
+      if (newLayout !== splitData.layout) {
+        splitData.layout = newLayout;
+      }
+
+      // 渲染分屏界面
+      this.renderSplitPanes(parentSessionId);
+      
+      // 设置活动面板
+      this.activePaneId = paneId;
+      terminal.focus();
+
+      return { paneId, sshSessionId };
+    } catch (error) {
+      console.error('Failed to create split pane:', error);
+      this.showNotification('创建分屏失败: ' + error.message, 'error');
+      return null;
+    }
+  }
+
+  async initializeSplitContainer(sessionId, layout) {
+    // 获取原始终端
+    const originalTerminal = this.terminals.get(sessionId);
+    if (!originalTerminal) return;
+
+    // 创建分屏数据结构
+    this.splitSessions.set(sessionId, {
+      layout,
+      panes: [{
+        paneId: `pane-${sessionId}`,
+        sshSessionId: sessionId,
+        config: originalTerminal.config,
+        terminal: originalTerminal.terminal,
+        fitAddon: originalTerminal.fitAddon
+      }]
+    });
+
+    // 显示工具栏和关闭分屏按钮
+    document.getElementById('terminalToolbar').style.display = 'flex';
+    document.getElementById('closeSplitBtn').style.display = 'flex';
+  }
+
+  renderSplitPanes(sessionId) {
+    const splitData = this.splitSessions.get(sessionId);
+    if (!splitData) return;
+
+    const container = document.getElementById('terminalContainer');
+    
+    // 清空容器
+    container.innerHTML = '';
+
+    // 创建分屏容器
+    const splitContainer = document.createElement('div');
+    splitContainer.className = `split-container ${splitData.layout}`;
+    splitContainer.id = `split-${sessionId}`;
+
+    // 创建每个分屏面板
+    splitData.panes.forEach((pane, index) => {
+      const paneElement = document.createElement('div');
+      paneElement.className = 'split-pane';
+      paneElement.id = pane.paneId;
+
+      // 面板头部
+      const header = document.createElement('div');
+      header.className = 'split-pane-header';
+      
+      const title = document.createElement('div');
+      title.className = 'split-pane-title';
+      const sessionName = pane.config.name || `${pane.config.username}@${pane.config.host}`;
+      title.textContent = `${index + 1}. ${sessionName}`;
+      
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'split-pane-close';
+      closeBtn.innerHTML = '✕';
+      closeBtn.title = '关闭此面板';
+      closeBtn.onclick = () => this.closeSplitPane(sessionId, pane.paneId);
+      
+      header.appendChild(title);
+      header.appendChild(closeBtn);
+
+      // 面板内容
+      const content = document.createElement('div');
+      content.className = 'split-pane-content';
+      content.id = `${pane.paneId}-content`;
+
+      paneElement.appendChild(header);
+      paneElement.appendChild(content);
+      splitContainer.appendChild(paneElement);
+
+      // 将终端附加到面板
+      setTimeout(() => {
+        // 检查终端是否已经有 element
+        if (pane.terminal.element) {
+          // 终端已经打开过，移动 DOM 元素
+          content.appendChild(pane.terminal.element);
+        } else {
+          // 终端还没打开过，调用 open
+          pane.terminal.open(content);
+        }
+        
+        pane.fitAddon.fit();
+        
+        // 添加点击事件，切换活动面板
+        content.addEventListener('click', () => {
+          this.activePaneId = pane.paneId;
+          pane.terminal.focus();
+        });
+      }, 0);
+    });
+
+    container.appendChild(splitContainer);
+
+    // 监听窗口大小变化
+    setTimeout(() => {
+      splitData.panes.forEach(pane => {
+        pane.fitAddon.fit();
+      });
+    }, 100);
+  }
+
+  async closeSplitPane(sessionId, paneId) {
+    const splitData = this.splitSessions.get(sessionId);
+    if (!splitData) return;
+
+    // 找到要关闭的面板
+    const paneIndex = splitData.panes.findIndex(p => p.paneId === paneId);
+    if (paneIndex === -1) return;
+
+    const pane = splitData.panes[paneIndex];
+
+    // 断开 SSH 连接
+    if (pane.sshSessionId) {
+      await window.electronAPI.ssh.disconnect(pane.sshSessionId);
+      this.terminals.delete(pane.sshSessionId);
+    }
+
+    // 从面板列表中移除
+    splitData.panes.splice(paneIndex, 1);
+
+    // 如果只剩一个面板，关闭分屏模式
+    if (splitData.panes.length === 1) {
+      this.closeSplit();
+    } else {
+      // 根据剩余面板数量更新布局
+      const newLayout = this.determineLayout(splitData.panes.length);
+      if (newLayout !== splitData.layout) {
+        splitData.layout = newLayout;
+      }
+      
+      // 重新渲染分屏
+      this.renderSplitPanes(sessionId);
+    }
+  }
+
+  closeSplit() {
+    if (!this.activeSessionId || !this.splitSessions.has(this.activeSessionId)) {
+      return;
+    }
+
+    const splitData = this.splitSessions.get(this.activeSessionId);
+    
+    // 关闭所有额外的面板（保留第一个）
+    const panesToClose = splitData.panes.slice(1);
+    
+    panesToClose.forEach(async (pane) => {
+      if (pane.sshSessionId && pane.sshSessionId !== this.activeSessionId) {
+        await window.electronAPI.ssh.disconnect(pane.sshSessionId);
+        this.terminals.delete(pane.sshSessionId);
+      }
+    });
+
+    // 删除分屏数据
+    this.splitSessions.delete(this.activeSessionId);
+
+    // 显示工具栏但隐藏关闭分屏按钮
+    document.getElementById('terminalToolbar').style.display = 'flex';
+    document.getElementById('closeSplitBtn').style.display = 'none';
+
+    // 恢复原始终端显示
+    const container = document.getElementById('terminalContainer');
+    container.innerHTML = '';
+
+    // 重新创建原始终端包装器
+    const terminalData = this.terminals.get(this.activeSessionId);
+    if (terminalData) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'terminal-wrapper active';
+      wrapper.id = `terminal-${this.activeSessionId}`;
+      container.appendChild(wrapper);
+
+      // 检查终端是否已经有 element
+      if (terminalData.terminal.element) {
+        // 终端已经打开过，移动 DOM 元素
+        wrapper.appendChild(terminalData.terminal.element);
+      } else {
+        // 终端还没打开过，调用 open
+        terminalData.terminal.open(wrapper);
+      }
+      
+      setTimeout(() => {
+        terminalData.fitAddon.fit();
+        terminalData.terminal.focus();
+      }, 100);
+    }
+
+    this.showNotification('已关闭分屏', 'success');
   }
 }
 
