@@ -11,6 +11,7 @@ class WebDAVSync {
     this.userDataPath = app.getPath('userData');
     this.configFile = path.join(this.userDataPath, 'webdav-config.json');
     this.remoteFileName = 'anotherssh-config.json'; // 默认文件名
+    this.remoteLogsDir = 'anotherssh-logs'; // 日志目录
     this.lastSyncTime = null;
     this.isSyncing = false;
     this.webdavModule = null;
@@ -62,6 +63,11 @@ class WebDAVSync {
       // 设置远程文件路径
       if (config.remotePath) {
         this.remoteFileName = config.remotePath;
+      }
+      
+      // 设置远程日志目录
+      if (config.remoteLogsPath) {
+        this.remoteLogsDir = config.remoteLogsPath;
       }
       
       return { success: true };
@@ -376,6 +382,225 @@ class WebDAVSync {
       autoSyncEnabled: !!this.syncInterval,
       isSyncing: this.isSyncing
     };
+  }
+
+  // ========== 日志同步功能 ==========
+
+  // 上传日志文件到 WebDAV
+  async uploadLogs(logManager) {
+    if (!this.client) {
+      console.log('Upload logs: client not initialized');
+      return { success: false, error: 'WebDAV client not initialized' };
+    }
+
+    if (!this.config || !this.config.syncLogs) {
+      console.log('Upload logs: sync disabled', { hasConfig: !!this.config, syncLogs: this.config?.syncLogs });
+      return { success: true, message: 'Log sync is disabled' };
+    }
+
+    console.log('Starting log upload...');
+    console.log('Remote logs directory:', this.remoteLogsDir);
+
+    try {
+      // 确保远程日志目录存在
+      try {
+        console.log('Checking if remote logs directory exists:', this.remoteLogsDir);
+        const exists = await this.client.exists(this.remoteLogsDir);
+        console.log('Remote logs directory exists:', exists);
+        
+        if (!exists) {
+          console.log('Creating remote logs directory:', this.remoteLogsDir);
+          
+          // 如果路径包含子目录，需要递归创建
+          const pathParts = this.remoteLogsDir.split('/').filter(p => p);
+          let currentPath = '';
+          
+          for (const part of pathParts) {
+            currentPath = currentPath ? `${currentPath}/${part}` : part;
+            try {
+              const partExists = await this.client.exists(currentPath);
+              if (!partExists) {
+                console.log('Creating directory:', currentPath);
+                await this.client.createDirectory(currentPath);
+              }
+            } catch (createError) {
+              console.warn(`Failed to create directory ${currentPath}:`, createError.message);
+              // 继续尝试，可能目录已存在
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check/create logs directory:', error);
+        console.error('Error details:', {
+          message: error.message,
+          status: error.status,
+          response: error.response
+        });
+        // 不要因为目录创建失败就停止，继续尝试上传
+      }
+
+      // 获取所有本地日志
+      const logs = logManager.getAllLogs();
+      console.log('Found local logs:', logs.length);
+      let uploaded = 0;
+      let failed = 0;
+
+      for (const log of logs) {
+        try {
+          const remotePath = `${this.remoteLogsDir}/${log.name}`;
+          console.log('Uploading log:', log.name, 'to', remotePath);
+          const content = fs.readFileSync(log.path);
+          console.log('Log file size:', content.length, 'bytes');
+          
+          // 尝试上传
+          try {
+            await this.client.putFileContents(remotePath, content, {
+              overwrite: true
+            });
+            uploaded++;
+            console.log('Successfully uploaded:', log.name);
+          } catch (uploadError) {
+            // 如果是 409 冲突错误，可能是目录不存在
+            if (uploadError.status === 409 || uploadError.message?.includes('409') || uploadError.message?.includes('Conflict')) {
+              console.log('Got 409 error, trying to create parent directory...');
+              
+              // 尝试创建父目录
+              try {
+                const pathParts = this.remoteLogsDir.split('/').filter(p => p);
+                let currentPath = '';
+                
+                for (const part of pathParts) {
+                  currentPath = currentPath ? `${currentPath}/${part}` : part;
+                  try {
+                    const partExists = await this.client.exists(currentPath);
+                    if (!partExists) {
+                      await this.client.createDirectory(currentPath);
+                    }
+                  } catch (e) {
+                    // 忽略错误，继续
+                  }
+                }
+                
+                // 重试上传
+                await this.client.putFileContents(remotePath, content, {
+                  overwrite: true
+                });
+                uploaded++;
+                console.log('Successfully uploaded after retry:', log.name);
+              } catch (retryError) {
+                console.error('Retry failed:', retryError.message);
+                throw retryError;
+              }
+            } else {
+              throw uploadError;
+            }
+          }
+        } catch (error) {
+          console.error(`Failed to upload log ${log.name}:`, error);
+          console.error('Error details:', {
+            message: error.message,
+            status: error.status,
+            response: error.response
+          });
+          failed++;
+        }
+      }
+
+      const result = {
+        success: true,
+        uploaded,
+        failed,
+        total: logs.length
+      };
+      console.log('Upload logs result:', result);
+      return result;
+    } catch (error) {
+      console.error('Upload logs error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // 从 WebDAV 下载日志文件
+  async downloadLogs(logManager) {
+    if (!this.client) {
+      return { success: false, error: 'WebDAV client not initialized' };
+    }
+
+    if (!this.config || !this.config.syncLogs) {
+      return { success: true, message: 'Log sync is disabled' };
+    }
+
+    try {
+      // 检查远程日志目录是否存在
+      const exists = await this.client.exists(this.remoteLogsDir);
+      if (!exists) {
+        return { success: true, downloaded: 0, message: 'No remote logs found' };
+      }
+
+      // 获取远程日志列表
+      const contents = await this.client.getDirectoryContents(this.remoteLogsDir);
+      const logDir = logManager.getLogDir();
+      let downloaded = 0;
+      let skipped = 0;
+
+      for (const item of contents) {
+        if (item.type === 'file' && item.basename.endsWith('.log')) {
+          try {
+            const localPath = path.join(logDir, item.basename);
+            
+            // 如果本地已存在且大小相同，跳过
+            if (fs.existsSync(localPath)) {
+              const localStats = fs.statSync(localPath);
+              if (localStats.size === item.size) {
+                skipped++;
+                continue;
+              }
+            }
+
+            // 下载日志文件
+            const content = await this.client.getFileContents(item.filename, { format: 'binary' });
+            fs.writeFileSync(localPath, content);
+            downloaded++;
+          } catch (error) {
+            console.error(`Failed to download log ${item.basename}:`, error.message);
+          }
+        }
+      }
+
+      return {
+        success: true,
+        downloaded,
+        skipped,
+        total: contents.filter(item => item.type === 'file' && item.basename.endsWith('.log')).length
+      };
+    } catch (error) {
+      console.error('Download logs error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // 同步日志（双向同步）
+  async syncLogs(logManager) {
+    if (!this.config || !this.config.syncLogs) {
+      return { success: true, message: 'Log sync is disabled' };
+    }
+
+    try {
+      // 先下载远程日志
+      const downloadResult = await this.downloadLogs(logManager);
+      
+      // 再上传本地日志
+      const uploadResult = await this.uploadLogs(logManager);
+
+      return {
+        success: true,
+        download: downloadResult,
+        upload: uploadResult
+      };
+    } catch (error) {
+      console.error('Sync logs error:', error);
+      return { success: false, error: error.message };
+    }
   }
 }
 

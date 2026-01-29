@@ -51,7 +51,15 @@ if (!window.electronAPI) {
     },
     checkUpdates: () => window.ipcRenderer.invoke('check-updates'),
     openExternal: (url) => window.ipcRenderer.invoke('open-external', url),
-    getAppVersion: () => window.ipcRenderer.invoke('get-app-version')
+    getAppVersion: () => window.ipcRenderer.invoke('get-app-version'),
+    log: {
+      getAll: () => window.ipcRenderer.invoke('log:getAll'),
+      read: (logPath) => window.ipcRenderer.invoke('log:read', logPath),
+      delete: (logPath) => window.ipcRenderer.invoke('log:delete', logPath),
+      clearAll: () => window.ipcRenderer.invoke('log:clearAll'),
+      export: (logPath) => window.ipcRenderer.invoke('log:export', logPath),
+      openDir: () => window.ipcRenderer.invoke('log:openDir')
+    }
   };
 }
 
@@ -1890,6 +1898,12 @@ class SSHClient {
     
     // 初始预览
     this.updateThemePreview(document.getElementById('themeMode').value);
+    
+    // 如果当前是日志标签，加载日志
+    const activeTab = document.querySelector('.settings-tab.active');
+    if (activeTab && activeTab.dataset.tab === 'logs') {
+      this.loadLogs();
+    }
   }
 
   initializeSettingsDialog() {
@@ -1905,6 +1919,11 @@ class SSHClient {
         // 切换面板显示
         document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
         document.querySelector(`[data-panel="${tabName}"]`).classList.add('active');
+        
+        // 如果切换到日志标签，加载日志
+        if (tabName === 'logs') {
+          this.loadLogs();
+        }
       });
     });
 
@@ -1944,6 +1963,12 @@ class SSHClient {
         e.target.checked ? 'block' : 'none';
     });
 
+    // 日志同步复选框
+    document.getElementById('syncLogsEnabled').addEventListener('change', (e) => {
+      document.getElementById('logsPathGroup').style.display = 
+        e.target.checked ? 'block' : 'none';
+    });
+
     // 测试连接按钮
     document.getElementById('testWebdavBtn').addEventListener('click', async () => {
       await this.testWebDAVConnection();
@@ -1952,6 +1977,19 @@ class SSHClient {
     // 立即同步按钮
     document.getElementById('syncNowBtn').addEventListener('click', async () => {
       await this.syncNow();
+    });
+
+    // 日志管理按钮
+    document.getElementById('refreshLogsBtn').addEventListener('click', async () => {
+      await this.loadLogs();
+    });
+
+    document.getElementById('openLogDirBtn').addEventListener('click', async () => {
+      await this.openLogDir();
+    });
+
+    document.getElementById('clearAllLogsBtn').addEventListener('click', async () => {
+      await this.clearAllLogs();
     });
   }
 
@@ -2075,6 +2113,8 @@ class SSHClient {
     const remotePath = document.getElementById('webdavRemotePath').value.trim() || 'anotherssh-config.json';
     const autoSync = document.getElementById('autoSyncEnabled').checked;
     const syncInterval = parseInt(document.getElementById('autoSyncInterval').value);
+    const syncLogs = document.getElementById('syncLogsEnabled').checked;
+    const remoteLogsPath = document.getElementById('remoteLogsPath').value.trim() || 'anotherssh-logs';
 
     if (url && username && password) {
       const config = {
@@ -2083,7 +2123,9 @@ class SSHClient {
         password,
         remotePath,
         autoSync,
-        syncInterval
+        syncInterval,
+        syncLogs,
+        remoteLogsPath
       };
 
       await window.electronAPI.webdav.saveConfig(config);
@@ -2208,8 +2250,12 @@ class SSHClient {
         document.getElementById('webdavRemotePath').value = result.config.remotePath || 'anotherssh-config.json';
         document.getElementById('autoSyncEnabled').checked = result.config.autoSync || false;
         document.getElementById('autoSyncInterval').value = result.config.syncInterval || 5;
+        document.getElementById('syncLogsEnabled').checked = result.config.syncLogs || false;
+        document.getElementById('remoteLogsPath').value = result.config.remoteLogsPath || 'anotherssh-logs';
         document.getElementById('autoSyncIntervalGroup').style.display = 
           result.config.autoSync ? 'block' : 'none';
+        document.getElementById('logsPathGroup').style.display = 
+          result.config.syncLogs ? 'block' : 'none';
 
         // 初始化客户端
         if (result.config.url && result.config.username && result.config.password) {
@@ -2218,6 +2264,8 @@ class SSHClient {
       } else {
         // 设置默认值
         document.getElementById('webdavRemotePath').value = 'anotherssh-config.json';
+        document.getElementById('syncLogsEnabled').checked = false;
+        document.getElementById('remoteLogsPath').value = 'anotherssh-logs';
       }
 
       // 更新状态显示
@@ -2289,7 +2337,9 @@ class SSHClient {
           password,
           remotePath,
           autoSync: document.getElementById('autoSyncEnabled').checked,
-          syncInterval: parseInt(document.getElementById('autoSyncInterval').value)
+          syncInterval: parseInt(document.getElementById('autoSyncInterval').value),
+          syncLogs: document.getElementById('syncLogsEnabled').checked,
+          remoteLogsPath: document.getElementById('remoteLogsPath').value.trim() || 'anotherssh-logs'
         };
         
         await window.electronAPI.webdav.saveConfig(config);
@@ -2333,7 +2383,9 @@ class SSHClient {
         password,
         remotePath,
         autoSync: document.getElementById('autoSyncEnabled').checked,
-        syncInterval: parseInt(document.getElementById('autoSyncInterval').value)
+        syncInterval: parseInt(document.getElementById('autoSyncInterval').value),
+        syncLogs: document.getElementById('syncLogsEnabled').checked,
+        remoteLogsPath: document.getElementById('remoteLogsPath').value.trim() || 'anotherssh-logs'
       };
       
       // 重新初始化客户端以使用最新的 remotePath
@@ -2365,8 +2417,9 @@ class SSHClient {
         const result = await window.electronAPI.webdav.smartSync(sessions);
 
         if (result.success) {
+          let msg = '';
           if (result.action === 'uploaded') {
-            this.showNotification('✅ 配置已上传到云端', 'success');
+            msg = '✅ 配置已上传到云端';
           } else if (result.action === 'merged') {
             // 合并后的数据是加密的，直接保存加密数据
             await window.electronAPI.session.saveEncrypted(result.sessions);
@@ -2378,10 +2431,35 @@ class SSHClient {
               this.renderSessionList();
             }
             
-            const msg = `✅ 同步完成！新增: ${result.changes.added}, 更新: ${result.changes.updated}`;
-            this.showNotification(msg, 'success');
+            msg = `✅ 同步完成！新增: ${result.changes.added}, 更新: ${result.changes.updated}`;
           }
           
+          // 显示日志同步结果
+          if (result.logSync) {
+            if (result.logSync.success) {
+              const uploaded = result.logSync.upload?.uploaded || 0;
+              const downloaded = result.logSync.download?.downloaded || 0;
+              const failed = result.logSync.upload?.failed || 0;
+              
+              if (uploaded > 0 || downloaded > 0) {
+                const logMsg = `\n日志: 上传 ${uploaded}, 下载 ${downloaded}`;
+                msg += logMsg;
+              }
+              
+              if (failed > 0) {
+                msg += `\n⚠️ ${failed} 个日志上传失败`;
+                // 提示用户可能需要手动创建目录
+                setTimeout(() => {
+                  this.showNotification(
+                    `提示: 如果日志上传失败，请在 WebDAV 中手动创建目录: ${document.getElementById('remoteLogsPath').value || 'anotherssh-logs'}`,
+                    'info'
+                  );
+                }, 2000);
+              }
+            }
+          }
+          
+          this.showNotification(msg, 'success');
           await this.updateSyncStatus();
         } else {
           this.showNotification(`❌ 同步失败: ${result.error}`, 'error');
@@ -2391,7 +2469,28 @@ class SSHClient {
         const uploadResult = await window.electronAPI.webdav.upload(sessions);
         
         if (uploadResult.success) {
-          this.showNotification('✅ 配置已上传到云端', 'success');
+          let msg = '✅ 配置已上传到云端';
+          
+          // 显示日志上传结果
+          if (uploadResult.logUpload) {
+            if (uploadResult.logUpload.success) {
+              if (uploadResult.logUpload.uploaded > 0) {
+                msg += `\n日志: 上传 ${uploadResult.logUpload.uploaded} 个文件`;
+              }
+              if (uploadResult.logUpload.failed > 0) {
+                msg += `\n⚠️ ${uploadResult.logUpload.failed} 个日志上传失败`;
+                // 提示用户可能需要手动创建目录
+                setTimeout(() => {
+                  this.showNotification(
+                    `提示: 如果日志上传失败，请在 WebDAV 中手动创建目录: ${document.getElementById('remoteLogsPath').value || 'anotherssh-logs'}`,
+                    'info'
+                  );
+                }, 2000);
+              }
+            }
+          }
+          
+          this.showNotification(msg, 'success');
           await this.updateSyncStatus();
         } else {
           // 上传失败，可能是文件不存在
@@ -2483,6 +2582,163 @@ class SSHClient {
     statusUpdate.onclick = () => {
       window.electronAPI.openExternal(updateInfo.downloadUrl);
     };
+  }
+
+  // ========== 日志管理相关方法 ==========
+
+  async loadLogs() {
+    try {
+      const result = await window.electronAPI.log.getAll();
+      const logsList = document.getElementById('logsList');
+      
+      if (!result.success || result.logs.length === 0) {
+        logsList.innerHTML = '<p style="text-align: center; color: #888; padding: 20px;">暂无日志</p>';
+        return;
+      }
+
+      logsList.innerHTML = result.logs.map(log => `
+        <div class="log-item">
+          <div class="log-info">
+            <div class="log-name">${log.name}</div>
+            <div class="log-meta">
+              <span>大小: ${this.formatSize(log.size)}</span>
+              <span>创建: ${new Date(log.created).toLocaleString('zh-CN')}</span>
+              <span>修改: ${new Date(log.modified).toLocaleString('zh-CN')}</span>
+            </div>
+          </div>
+          <div class="log-actions">
+            <button class="btn-icon" onclick="app.showLogViewer('${log.path}')" title="查看">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 2C4.5 2 1.5 4.5 0 8c1.5 3.5 4.5 6 8 6s6.5-2.5 8-6c-1.5-3.5-4.5-6-8-6zm0 10c-2.2 0-4-1.8-4-4s1.8-4 4-4 4 1.8 4 4-1.8 4-4 4zm0-6.5c-1.4 0-2.5 1.1-2.5 2.5s1.1 2.5 2.5 2.5 2.5-1.1 2.5-2.5-1.1-2.5-2.5-2.5z"/>
+              </svg>
+            </button>
+            <button class="btn-icon" onclick="app.exportLog('${log.path}')" title="导出">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 0L4 4h3v5h2V4h3L8 0zM2 12v2h12v-2H2z"/>
+              </svg>
+            </button>
+            <button class="btn-icon" onclick="app.deleteLog('${log.path}')" title="删除" style="color: #f44336;">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M11 2H9c0-.55-.45-1-1-1H8c-.55 0-1 .45-1 1H5c-.55 0-1 .45-1 1v1h8V3c0-.55-.45-1-1-1zM4 5v9c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V5H4z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      `).join('');
+    } catch (error) {
+      console.error('Failed to load logs:', error);
+      this.showNotification('加载日志失败', 'error');
+    }
+  }
+
+  async showLogViewer(logPath) {
+    try {
+      const result = await window.electronAPI.log.read(logPath);
+      
+      if (!result.success) {
+        this.showNotification('读取日志失败', 'error');
+        return;
+      }
+
+      // 创建日志查看器对话框
+      const viewer = document.createElement('div');
+      viewer.className = 'log-viewer-overlay';
+      viewer.innerHTML = `
+        <div class="log-viewer-dialog">
+          <div class="log-viewer-header">
+            <h3>日志内容</h3>
+            <button class="btn-icon" onclick="this.closest('.log-viewer-overlay').remove()">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 6.6L13.3 1.3c.4-.4 1-.4 1.4 0 .4.4.4 1 0 1.4L9.4 8l5.3 5.3c.4.4.4 1 0 1.4-.4.4-1 .4-1.4 0L8 9.4l-5.3 5.3c-.4.4-1 .4-1.4 0-.4-.4-.4-1 0-1.4L6.6 8 1.3 2.7c-.4-.4-.4-1 0-1.4.4-.4 1-.4 1.4 0L8 6.6z"/>
+              </svg>
+            </button>
+          </div>
+          <div class="log-viewer-content">
+            <pre>${this.escapeHtml(result.content)}</pre>
+          </div>
+          <div class="log-viewer-footer">
+            <button class="btn-secondary" onclick="this.closest('.log-viewer-overlay').remove()">关闭</button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(viewer);
+    } catch (error) {
+      console.error('Failed to show log viewer:', error);
+      this.showNotification('显示日志失败', 'error');
+    }
+  }
+
+  async deleteLog(logPath) {
+    if (!confirm('确定要删除这个日志文件吗？')) {
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.log.delete(logPath);
+      
+      if (result.success) {
+        this.showNotification('日志已删除', 'success');
+        await this.loadLogs();
+      } else {
+        this.showNotification('删除日志失败: ' + result.error, 'error');
+      }
+    } catch (error) {
+      console.error('Failed to delete log:', error);
+      this.showNotification('删除日志失败', 'error');
+    }
+  }
+
+  async clearAllLogs() {
+    if (!confirm('确定要清除所有日志文件吗？此操作不可恢复！')) {
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.log.clearAll();
+      
+      if (result.success) {
+        this.showNotification('所有日志已清除', 'success');
+        await this.loadLogs();
+      } else {
+        this.showNotification('清除日志失败: ' + result.error, 'error');
+      }
+    } catch (error) {
+      console.error('Failed to clear logs:', error);
+      this.showNotification('清除日志失败', 'error');
+    }
+  }
+
+  async exportLog(logPath) {
+    try {
+      const result = await window.electronAPI.log.export(logPath);
+      
+      if (result.success) {
+        this.showNotification('日志已导出', 'success');
+      } else if (result.cancelled) {
+        // 用户取消了，不显示错误
+      } else {
+        this.showNotification('导出日志失败: ' + result.error, 'error');
+      }
+    } catch (error) {
+      console.error('Failed to export log:', error);
+      this.showNotification('导出日志失败', 'error');
+    }
+  }
+
+  async openLogDir() {
+    try {
+      await window.electronAPI.log.openDir();
+    } catch (error) {
+      console.error('Failed to open log directory:', error);
+      this.showNotification('打开日志目录失败', 'error');
+    }
+  }
+
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 }
 

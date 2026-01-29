@@ -10,6 +10,48 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   session: {
     save: (session) => ipcRenderer.invoke('session:save', session),
-    load: () => ipcRenderer.invoke('session:load')
-  }
+    load: () => ipcRenderer.invoke('session:load'),
+    loadEncrypted: () => ipcRenderer.invoke('session:loadEncrypted'),
+    saveEncrypted: (sessions) => ipcRenderer.invoke('session:saveEncrypted', sessions),
+    delete: (sessionId) => ipcRenderer.invoke('session:delete', sessionId),
+    export: () => ipcRenderer.invoke('session:export'),
+    import: () => ipcRenderer.invoke('session:import')
+  },
+  sftp: {
+    connect: (sessionId, config) => ipcRenderer.invoke('sftp:connect', { sessionId, config }),
+    list: (sessionId, remotePath) => ipcRenderer.invoke('sftp:list', { sessionId, remotePath }),
+    download: (sessionId, remotePath) => ipcRenderer.invoke('sftp:download', { sessionId, remotePath }),
+    upload: (sessionId, remotePath) => ipcRenderer.invoke('sftp:upload', { sessionId, remotePath }),
+    mkdir: (sessionId, remotePath) => ipcRenderer.invoke('sftp:mkdir', { sessionId, remotePath }),
+    delete: (sessionId, remotePath) => ipcRenderer.invoke('sftp:delete', { sessionId, remotePath }),
+    rename: (sessionId, oldPath, newPath) => ipcRenderer.invoke('sftp:rename', { sessionId, oldPath, newPath }),
+    disconnect: (sessionId) => ipcRenderer.invoke('sftp:disconnect', sessionId),
+    uploadFile: (sessionId, localPath, remotePath) => ipcRenderer.invoke('sftp:uploadFile', { sessionId, localPath, remotePath }),
+    cancelTransfer: (transferId) => ipcRenderer.invoke('sftp:cancelTransfer', transferId),
+    onProgress: (callback) => ipcRenderer.on('sftp:progress', (event, data) => callback(data))
+  },
+  webdav: {
+    loadConfig: () => ipcRenderer.invoke('webdav:loadConfig'),
+    saveConfig: (config) => ipcRenderer.invoke('webdav:saveConfig', config),
+    testConnection: (config) => ipcRenderer.invoke('webdav:testConnection', config),
+    initClient: (config) => ipcRenderer.invoke('webdav:initClient', config),
+    upload: (sessions) => ipcRenderer.invoke('webdav:upload', sessions),
+    download: () => ipcRenderer.invoke('webdav:download'),
+    smartSync: (localSessions) => ipcRenderer.invoke('webdav:smartSync', localSessions),
+    getStatus: () => ipcRenderer.invoke('webdav:getStatus'),
+    startAutoSync: (intervalMinutes) => ipcRenderer.invoke('webdav:startAutoSync', intervalMinutes),
+    stopAutoSync: () => ipcRenderer.invoke('webdav:stopAutoSync')
+  },
+  logs: {
+    getAll: () => ipcRenderer.invoke('log:getAll'),
+    read: (logPath) => ipcRenderer.invoke('log:read', logPath),
+    delete: (logPath) => ipcRenderer.invoke('log:delete', logPath),
+    clearAll: () => ipcRenderer.invoke('log:clearAll'),
+    export: (logPath) => ipcRenderer.invoke('log:export', logPath),
+    openDir: () => ipcRenderer.invoke('log:openDir')
+  },
+  checkUpdates: () => ipcRenderer.invoke('check-updates'),
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
+  getAppVersion: () => ipcRenderer.invoke('get-app-version')
 });
+

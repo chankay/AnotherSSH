@@ -4,12 +4,14 @@ const SSHManager = require('./ssh-manager');
 const SessionStore = require('./session-store');
 const SFTPManager = require('./sftp-manager');
 const WebDAVSync = require('./webdav-sync');
+const LogManager = require('./log-manager');
 
 let mainWindow;
 const sshManager = new SSHManager();
 const sessionStore = new SessionStore();
 const sftpManager = new SFTPManager();
 const webdavSync = new WebDAVSync();
+const logManager = new LogManager();
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -54,15 +56,23 @@ ipcMain.handle('ssh:connect', async (event, config) => {
       config, 
       (data) => {
         if (resolvedSessionId) {
+          // 记录日志
+          logManager.writeLog(resolvedSessionId, data);
           mainWindow.webContents.send('ssh:data', { sessionId: resolvedSessionId, data });
         }
       },
       (sessionId) => {
-        // 连接断开时通知渲染进程
+        // 连接断开时通知渲染进程并结束日志
+        logManager.endSession(sessionId);
         mainWindow.webContents.send('ssh:closed', { sessionId });
       }
     );
     resolvedSessionId = sessionId;
+    
+    // 开始记录日志
+    const sessionName = config.name || `${config.username}@${config.host}`;
+    logManager.startSession(sessionId, sessionName);
+    
     return { success: true, sessionId };
   } catch (error) {
     return { success: false, error: error.message };
@@ -89,6 +99,8 @@ ipcMain.handle('ssh:resize', async (event, { sessionId, cols, rows }) => {
 
 ipcMain.handle('ssh:disconnect', async (event, sessionId) => {
   try {
+    // 结束日志记录
+    logManager.endSession(sessionId);
     await sshManager.disconnect(sessionId);
     return { success: true };
   } catch (error) {
@@ -285,15 +297,55 @@ ipcMain.handle('webdav:initClient', async (event, config) => {
 });
 
 ipcMain.handle('webdav:upload', async (event, sessions) => {
-  return await webdavSync.uploadSessions(sessions);
+  const result = await webdavSync.uploadSessions(sessions);
+  
+  // 如果配置上传成功且启用了日志同步，则上传日志
+  if (result.success && webdavSync.config && webdavSync.config.syncLogs) {
+    console.log('Log sync is enabled, uploading logs...');
+    const logUploadResult = await webdavSync.uploadLogs(logManager);
+    console.log('Log upload result:', logUploadResult);
+    result.logUpload = logUploadResult;
+  } else {
+    console.log('Log upload check:', {
+      resultSuccess: result.success,
+      hasConfig: !!webdavSync.config,
+      syncLogs: webdavSync.config?.syncLogs
+    });
+  }
+  
+  return result;
 });
 
 ipcMain.handle('webdav:download', async (event) => {
-  return await webdavSync.downloadSessions();
+  const result = await webdavSync.downloadSessions();
+  
+  // 如果配置下载成功且启用了日志同步，则下载日志
+  if (result.success && webdavSync.config && webdavSync.config.syncLogs) {
+    const logDownloadResult = await webdavSync.downloadLogs(logManager);
+    result.logDownload = logDownloadResult;
+  }
+  
+  return result;
 });
 
 ipcMain.handle('webdav:smartSync', async (event, localSessions) => {
-  return await webdavSync.smartSync(localSessions);
+  const result = await webdavSync.smartSync(localSessions);
+  
+  // 如果配置同步成功且启用了日志同步，则同步日志
+  if (result.success && webdavSync.config && webdavSync.config.syncLogs) {
+    console.log('Log sync is enabled, syncing logs...');
+    const logSyncResult = await webdavSync.syncLogs(logManager);
+    console.log('Log sync result:', logSyncResult);
+    result.logSync = logSyncResult;
+  } else {
+    console.log('Log sync check:', {
+      resultSuccess: result.success,
+      hasConfig: !!webdavSync.config,
+      syncLogs: webdavSync.config?.syncLogs
+    });
+  }
+  
+  return result;
 });
 
 ipcMain.handle('webdav:getStatus', async (event) => {
@@ -417,4 +469,61 @@ ipcMain.handle('open-external', async (event, url) => {
 // 获取应用版本号
 ipcMain.handle('get-app-version', () => {
   return app.getVersion();
+});
+
+
+// 日志管理
+ipcMain.handle('log:getAll', async () => {
+  try {
+    const logs = logManager.getAllLogs();
+    return { success: true, logs };
+  } catch (error) {
+    return { success: false, error: error.message, logs: [] };
+  }
+});
+
+ipcMain.handle('log:read', async (event, logPath) => {
+  try {
+    const content = logManager.readLog(logPath);
+    if (content === null) {
+      return { success: false, error: 'Failed to read log file' };
+    }
+    return { success: true, content };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('log:delete', async (event, logPath) => {
+  return logManager.deleteLog(logPath);
+});
+
+ipcMain.handle('log:clearAll', async () => {
+  return logManager.clearAllLogs();
+});
+
+ipcMain.handle('log:export', async (event, logPath) => {
+  try {
+    const result = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: path.basename(logPath),
+      filters: [
+        { name: 'Log Files', extensions: ['log', 'txt'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
+
+    if (result.canceled) {
+      return { success: false, cancelled: true };
+    }
+
+    return logManager.exportLog(logPath, result.filePath);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('log:openDir', async () => {
+  const logDir = logManager.getLogDir();
+  await shell.openPath(logDir);
+  return { success: true };
 });

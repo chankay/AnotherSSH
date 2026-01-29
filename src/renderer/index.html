@@ -189,6 +189,7 @@
         <button class="settings-tab active" data-tab="theme">主题</button>
         <button class="settings-tab" data-tab="terminal">终端</button>
         <button class="settings-tab" data-tab="sync">同步</button>
+        <button class="settings-tab" data-tab="logs">日志</button>
       </div>
 
       <div class="settings-content">
@@ -351,6 +352,20 @@
             <input type="number" id="autoSyncInterval" value="5" min="1" max="60">
           </div>
 
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="syncLogsEnabled">
+              同步日志文件
+            </label>
+            <small>启用后会将会话日志同步到云端（可能占用较多空间）</small>
+          </div>
+
+          <div class="form-group" id="logsPathGroup" style="display: none;">
+            <label>日志同步路径:</label>
+            <input type="text" id="remoteLogsPath" placeholder="anotherssh-logs">
+            <small>日志文件将保存在 WebDAV 根目录下的此文件夹中</small>
+          </div>
+
           <div class="sync-help">
             <h4>📖 使用说明</h4>
             <p><strong>坚果云配置:</strong></p>
@@ -370,6 +385,19 @@
               <li>文件名与上面"远程文件路径"保持一致</li>
               <li>然后点击"立即同步"即可</li>
             </ol>
+          </div>
+        </div>
+
+        <!-- 日志管理 -->
+        <div class="settings-panel" data-panel="logs">
+          <div class="logs-toolbar">
+            <button id="refreshLogsBtn" class="btn-secondary">刷新</button>
+            <button id="openLogDirBtn" class="btn-secondary">打开日志目录</button>
+            <button id="clearAllLogsBtn" class="btn-secondary" style="color: #f44336;">清除所有日志</button>
+          </div>
+
+          <div class="logs-list" id="logsList">
+            <p style="text-align: center; color: #888; padding: 20px;">暂无日志</p>
           </div>
         </div>
       </div>
