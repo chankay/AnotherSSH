@@ -73,6 +73,7 @@ class SSHClient {
     this.savedSessions = [];
     this.sessionGroups = [];
     this.collapsedGroups = new Set();
+    this.loadCollapsedGroups(); // 加载折叠状态
     this.currentSftpPath = {};
     this.editingSessionId = null;
     this.searchQuery = '';
@@ -1187,6 +1188,26 @@ class SSHClient {
     }
   }
 
+  // 保存折叠状态到 localStorage
+  saveCollapsedGroups() {
+    const collapsed = Array.from(this.collapsedGroups);
+    localStorage.setItem('collapsedGroups', JSON.stringify(collapsed));
+  }
+
+  // 从 localStorage 加载折叠状态
+  loadCollapsedGroups() {
+    try {
+      const saved = localStorage.getItem('collapsedGroups');
+      if (saved) {
+        const collapsed = JSON.parse(saved);
+        this.collapsedGroups = new Set(collapsed);
+      }
+    } catch (error) {
+      console.error('Failed to load collapsed groups:', error);
+      this.collapsedGroups = new Set();
+    }
+  }
+
   renderSessionList() {
     const sessionList = document.getElementById('sessionList');
     sessionList.innerHTML = '';
@@ -1256,6 +1277,7 @@ class SSHClient {
         } else {
           this.collapsedGroups.add(groupName);
         }
+        this.saveCollapsedGroups(); // 保存折叠状态
         this.renderSessionList();
       });
 
