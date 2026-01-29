@@ -60,6 +60,16 @@ if (!window.electronAPI) {
       clearAll: () => window.ipcRenderer.invoke('log:clearAll'),
       export: (logPath) => window.ipcRenderer.invoke('log:export', logPath),
       openDir: () => window.ipcRenderer.invoke('log:openDir')
+    },
+    masterPassword: {
+      has: () => window.ipcRenderer.invoke('master-password:has'),
+      hasPrompted: () => window.ipcRenderer.invoke('master-password:hasPrompted'),
+      setPrompted: () => window.ipcRenderer.invoke('master-password:setPrompted'),
+      clearPrompted: () => window.ipcRenderer.invoke('master-password:clearPrompted'),
+      set: (password) => window.ipcRenderer.invoke('master-password:set', password),
+      verify: (password) => window.ipcRenderer.invoke('master-password:verify', password),
+      change: (oldPassword, newPassword) => window.ipcRenderer.invoke('master-password:change', oldPassword, newPassword),
+      reset: () => window.ipcRenderer.invoke('master-password:reset')
     }
   };
 }
@@ -97,50 +107,136 @@ class SSHClient {
   }
 
   init() {
-    this.setupEventListeners();
+    console.time('init-critical');
+    
+    // 立即加载会话列表（最重要）
     this.loadSessions();
+    this.loadSidebarState();
     
-    // 加载并显示版本号
-    this.loadAppVersion();
+    console.timeEnd('init-critical');
     
-    // 不在启动时自动检查更新，只在用户点击版本号时手动检查
-    
-    // 监听来自主进程的数据
-    window.electronAPI.ssh.onData((data) => {
-      this.handleSSHData(data);
-    });
+    // 使用 setTimeout 延迟非关键初始化，让界面先渲染
+    setTimeout(() => {
+      console.time('init-deferred');
+      
+      this.setupEventListeners();
+      this.loadAppVersion();
+      
+      // 监听来自主进程的数据
+      window.electronAPI.ssh.onData((data) => {
+        this.handleSSHData(data);
+      });
 
-    // 监听 SSH 连接关闭
-    window.ipcRenderer.on('ssh:closed', (event, data) => {
-      this.handleSSHClosed(data);
-    });
+      // 监听 SSH 连接关闭
+      window.ipcRenderer.on('ssh:closed', (event, data) => {
+        this.handleSSHClosed(data);
+      });
 
-    // 监听 SFTP 进度
-    window.electronAPI.sftp.onProgress((data) => {
-      this.updateProgress(data);
-    });
+      // 监听 SFTP 进度
+      window.electronAPI.sftp.onProgress((data) => {
+        this.updateProgress(data);
+      });
 
-    // 监听窗口大小变化，调整所有终端
-    let resizeTimeout;
-    window.addEventListener('resize', () => {
-      // 使用防抖，避免频繁调整
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(() => {
-        this.terminals.forEach((terminalData) => {
-          if (terminalData.fitAddon) {
-            terminalData.fitAddon.fit();
-            // 通知后端更新终端大小
-            if (terminalData.terminal) {
-              window.electronAPI.ssh.resize(
-                terminalData.sessionId, 
-                terminalData.terminal.cols, 
-                terminalData.terminal.rows
-              );
+      // 监听窗口大小变化
+      let resizeTimeout;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+          this.terminals.forEach((terminalData) => {
+            if (terminalData.fitAddon) {
+              terminalData.fitAddon.fit();
+              if (terminalData.terminal) {
+                window.electronAPI.ssh.resize(
+                  terminalData.sessionId, 
+                  terminalData.terminal.cols, 
+                  terminalData.terminal.rows
+                );
+              }
             }
-          }
-        });
-      }, 100);
+          });
+        }, 100);
+      });
+      
+      // 设置主密码相关的事件监听器
+      this.setupMasterPasswordListeners();
+      
+      // 异步检查主密码（不阻塞界面显示）
+      this.checkMasterPassword();
+      
+      console.timeEnd('init-deferred');
+    }, 0);
+  }
+
+  setupMasterPasswordListeners() {
+    // 主密码对话框事件监听
+    document.getElementById('masterPasswordForm').addEventListener('submit', (e) => {
+      this.handleMasterPassword(e);
     });
+
+    document.getElementById('masterPasswordSkipBtn').addEventListener('click', () => {
+      this.skipMasterPassword();
+    });
+
+    document.getElementById('masterPasswordCancelBtn').addEventListener('click', () => {
+      this.hideMasterPasswordDialog();
+    });
+  }
+
+  async checkMasterPassword() {
+    try {
+      // 并行检查两个状态，减少等待时间
+      const [promptedResult, hasPasswordResult] = await Promise.all([
+        window.electronAPI.masterPassword.hasPrompted(),
+        window.electronAPI.masterPassword.has()
+      ]);
+      
+      const hasPrompted = promptedResult.success && promptedResult.hasPrompted;
+      const hasPassword = hasPasswordResult.hasPassword;
+      
+      console.log('Master password check:', {
+        hasPassword: hasPassword,
+        hasPrompted: hasPrompted
+      });
+      
+      if (!hasPassword) {
+        // 没有设置主密码
+        if (!hasPrompted) {
+          // 首次使用，提示设置主密码
+          console.log('First time, showing master password dialog');
+          this.showMasterPasswordDialog('set');
+        } else {
+          // 用户之前选择了跳过，不做任何操作（应用已经初始化）
+          console.log('User skipped before, app already initialized');
+        }
+      } else {
+        // 已有主密码，需要验证
+        console.log('Master password exists, showing verify dialog');
+        this.showMasterPasswordDialog('verify');
+        // 锁定界面，禁止操作
+        this.lockUI();
+      }
+    } catch (error) {
+      console.error('Failed to check master password:', error);
+      // 出错时不阻塞应用使用
+    }
+  }
+
+  lockUI() {
+    // 锁定界面，禁止操作（除了主密码对话框）
+    const mainContent = document.querySelector('.container');
+    if (mainContent) {
+      mainContent.style.pointerEvents = 'none';
+      mainContent.style.opacity = '0.5';
+    }
+  }
+
+  unlockUI() {
+    // 解锁界面
+    const mainContent = document.querySelector('.container');
+    if (mainContent) {
+      mainContent.style.pointerEvents = 'auto';
+      mainContent.style.opacity = '1';
+    }
   }
 
   updateProgress(data) {
@@ -213,6 +309,15 @@ class SSHClient {
   }
 
   setupEventListeners() {
+    // 侧边栏收起/展开
+    document.getElementById('sidebarToggle').addEventListener('click', () => {
+      this.toggleSidebar();
+    });
+
+    document.getElementById('sidebarExpand').addEventListener('click', () => {
+      this.toggleSidebar();
+    });
+
     document.getElementById('newSessionBtn').addEventListener('click', () => {
       this.showConnectDialog();
     });
@@ -307,6 +412,11 @@ class SSHClient {
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault();
         document.getElementById('sessionSearch').focus();
+      }
+      // Ctrl/Cmd + B: 切换侧边栏
+      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+        e.preventDefault();
+        this.toggleSidebar();
       }
       // ESC: 关闭对话框
       if (e.key === 'Escape') {
@@ -480,6 +590,237 @@ class SSHClient {
         document.getElementById('sessionColor').value = option.dataset.color;
       });
     });
+  }
+
+  showMasterPasswordDialog(mode) {
+    const dialog = document.getElementById('masterPasswordDialog');
+    const title = document.getElementById('masterPasswordTitle');
+    const confirmGroup = document.getElementById('masterPasswordConfirmGroup');
+    const hint = document.getElementById('masterPasswordHint');
+    const cancelBtn = document.getElementById('masterPasswordCancelBtn');
+    const skipBtn = document.getElementById('masterPasswordSkipBtn');
+    const form = document.getElementById('masterPasswordForm');
+    
+    // 重置表单
+    form.reset();
+    
+    if (mode === 'set') {
+      title.textContent = '设置主密码（可选）';
+      confirmGroup.style.display = 'block';
+      hint.textContent = '主密码用于保护您的会话数据，请妥善保管。您也可以选择暂不设置。';
+      cancelBtn.style.display = 'none';
+      skipBtn.style.display = 'inline-block';
+    } else if (mode === 'verify') {
+      title.textContent = '输入主密码';
+      confirmGroup.style.display = 'none';
+      hint.textContent = '请输入主密码以解锁应用。';
+      cancelBtn.style.display = 'none';
+      skipBtn.style.display = 'none';
+    } else if (mode === 'change') {
+      title.textContent = '修改主密码';
+      confirmGroup.style.display = 'block';
+      hint.textContent = '请输入新的主密码。';
+      cancelBtn.style.display = 'inline-block';
+      skipBtn.style.display = 'none';
+    }
+    
+    dialog.style.display = 'flex';
+    document.getElementById('masterPassword').focus();
+  }
+
+  hideMasterPasswordDialog() {
+    document.getElementById('masterPasswordDialog').style.display = 'none';
+    document.getElementById('masterPasswordForm').reset();
+  }
+
+  async handleMasterPassword(e) {
+    e.preventDefault();
+    
+    const password = document.getElementById('masterPassword').value;
+    const confirmPassword = document.getElementById('masterPasswordConfirm').value;
+    const title = document.getElementById('masterPasswordTitle').textContent;
+    
+    if (title.includes('设置主密码')) {
+      // 设置主密码
+      if (!password) {
+        this.showNotification('请输入密码', 'error');
+        return;
+      }
+      
+      if (password !== confirmPassword) {
+        this.showNotification('两次输入的密码不一致', 'error');
+        return;
+      }
+      
+      if (password.length < 6) {
+        this.showNotification('密码长度至少为 6 位', 'error');
+        return;
+      }
+      
+      const result = await window.electronAPI.masterPassword.set(password);
+      if (result.success) {
+        // 记录用户已经设置过主密码
+        await window.electronAPI.masterPassword.setPrompted();
+        this.showNotification('主密码设置成功', 'success');
+        this.hideMasterPasswordDialog();
+        // 应用已经初始化，不需要再调用 initializeApp
+      } else {
+        this.showNotification('设置失败: ' + result.error, 'error');
+      }
+    } else if (title === '输入主密码') {
+      // 验证主密码
+      if (!password) {
+        this.showNotification('请输入密码', 'error');
+        return;
+      }
+      
+      const result = await window.electronAPI.masterPassword.verify(password);
+      if (result.success && result.valid) {
+        this.hideMasterPasswordDialog();
+        this.unlockUI(); // 解锁界面
+      } else {
+        this.showNotification('密码错误，请重试', 'error');
+        document.getElementById('masterPassword').value = '';
+        document.getElementById('masterPassword').focus();
+      }
+    }
+  }
+
+  async skipMasterPassword() {
+    console.log('User skipped master password setup');
+    // 记录用户已经看过设置主密码的提示
+    const result = await window.electronAPI.masterPassword.setPrompted();
+    console.log('Set prompted flag result:', result);
+    this.hideMasterPasswordDialog();
+    // 应用已经初始化，不需要再调用 initializeApp
+  }
+
+  async updateMasterPasswordStatus() {
+    try {
+      const result = await window.electronAPI.masterPassword.has();
+      const statusText = document.getElementById('masterPasswordStatus');
+      const setGroup = document.getElementById('setMasterPasswordGroup');
+      const changeGroup = document.getElementById('changeMasterPasswordGroup');
+      
+      if (result.hasPassword) {
+        statusText.textContent = '已设置';
+        statusText.style.color = '#4caf50';
+        setGroup.style.display = 'none';
+        changeGroup.style.display = 'block';
+      } else {
+        statusText.textContent = '未设置';
+        statusText.style.color = '#888';
+        setGroup.style.display = 'block';
+        changeGroup.style.display = 'none';
+      }
+    } catch (error) {
+      console.error('Failed to check master password status:', error);
+    }
+  }
+
+  showChangeMasterPasswordDialog() {
+    // 先隐藏设置对话框
+    document.getElementById('settingsDialog').style.display = 'none';
+    
+    // 创建修改主密码的对话框
+    const dialog = document.getElementById('masterPasswordDialog');
+    const title = document.getElementById('masterPasswordTitle');
+    const form = document.getElementById('masterPasswordForm');
+    const confirmGroup = document.getElementById('masterPasswordConfirmGroup');
+    const hint = document.getElementById('masterPasswordHint');
+    const skipBtn = document.getElementById('masterPasswordSkipBtn');
+    const cancelBtn = document.getElementById('masterPasswordCancelBtn');
+    
+    // 重置表单
+    form.reset();
+    
+    // 添加旧密码输入框
+    let oldPasswordGroup = document.getElementById('oldPasswordGroup');
+    if (!oldPasswordGroup) {
+      oldPasswordGroup = document.createElement('div');
+      oldPasswordGroup.className = 'form-group';
+      oldPasswordGroup.id = 'oldPasswordGroup';
+      oldPasswordGroup.innerHTML = `
+        <label for="oldPassword">旧密码</label>
+        <input type="password" id="oldPassword" placeholder="请输入旧密码" />
+      `;
+      document.getElementById('masterPasswordGroup').after(oldPasswordGroup);
+    }
+    
+    title.textContent = '修改主密码';
+    oldPasswordGroup.style.display = 'block';
+    document.getElementById('masterPasswordGroup').querySelector('label').textContent = '新密码';
+    document.getElementById('masterPassword').placeholder = '请输入新密码';
+    confirmGroup.style.display = 'block';
+    hint.textContent = '请输入旧密码和新密码。';
+    skipBtn.style.display = 'none';
+    cancelBtn.style.display = 'inline-block';
+    
+    // 修改表单提交处理
+    const oldHandler = form.onsubmit;
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      await this.handleChangeMasterPassword();
+    };
+    
+    dialog.style.display = 'flex';
+    document.getElementById('oldPassword').focus();
+    
+    // 关闭时恢复
+    const closeHandler = () => {
+      oldPasswordGroup.style.display = 'none';
+      document.getElementById('masterPasswordGroup').querySelector('label').textContent = '主密码';
+      document.getElementById('masterPassword').placeholder = '请输入主密码';
+      form.onsubmit = oldHandler;
+      // 恢复设置对话框
+      document.getElementById('settingsDialog').style.display = 'flex';
+    };
+    
+    cancelBtn.onclick = () => {
+      this.hideMasterPasswordDialog();
+      closeHandler();
+    };
+  }
+
+  async handleChangeMasterPassword() {
+    const oldPassword = document.getElementById('oldPassword').value;
+    const newPassword = document.getElementById('masterPassword').value;
+    const confirmPassword = document.getElementById('masterPasswordConfirm').value;
+    
+    if (!oldPassword) {
+      this.showNotification('请输入旧密码', 'error');
+      return;
+    }
+    
+    if (!newPassword) {
+      this.showNotification('请输入新密码', 'error');
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      this.showNotification('两次输入的新密码不一致', 'error');
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+      this.showNotification('新密码长度至少为 6 位', 'error');
+      return;
+    }
+    
+    const result = await window.electronAPI.masterPassword.change(oldPassword, newPassword);
+    if (result.success) {
+      this.showNotification('主密码修改成功', 'success');
+      this.hideMasterPasswordDialog();
+      document.getElementById('oldPasswordGroup').style.display = 'none';
+      // 恢复标签和占位符
+      document.getElementById('masterPasswordGroup').querySelector('label').textContent = '主密码';
+      document.getElementById('masterPassword').placeholder = '请输入主密码';
+      // 恢复设置对话框
+      document.getElementById('settingsDialog').style.display = 'flex';
+      this.updateMasterPasswordStatus();
+    } else {
+      this.showNotification('修改失败: ' + result.error, 'error');
+    }
   }
 
   showConnectDialog() {
@@ -1175,16 +1516,23 @@ class SSHClient {
   }
 
   async loadSessions() {
+    console.time('loadSessions-IPC');
     const result = await window.electronAPI.session.load();
+    console.timeEnd('loadSessions-IPC');
+    
     if (result.success && result.sessions) {
+      console.time('loadSessions-process');
       this.savedSessions = result.sessions;
       
       // 提取所有分组
       this.sessionGroups = [...new Set(this.savedSessions
         .map(s => s.group)
         .filter(g => g))];
+      console.timeEnd('loadSessions-process');
       
+      console.time('renderSessionList');
       this.renderSessionList();
+      console.timeEnd('renderSessionList');
     }
   }
 
@@ -1479,6 +1827,32 @@ class SSHClient {
     messageEl.textContent = message;
     dialog.style.display = 'flex';
 
+    // 如果没有提供回调函数，返回 Promise
+    if (!callback) {
+      return new Promise((resolve) => {
+        const handleOk = () => {
+          dialog.style.display = 'none';
+          cleanup();
+          resolve(true);
+        };
+
+        const handleCancel = () => {
+          dialog.style.display = 'none';
+          cleanup();
+          resolve(false);
+        };
+
+        const cleanup = () => {
+          okBtn.removeEventListener('click', handleOk);
+          cancelBtn.removeEventListener('click', handleCancel);
+        };
+
+        okBtn.addEventListener('click', handleOk);
+        cancelBtn.addEventListener('click', handleCancel);
+      });
+    }
+
+    // 兼容旧的回调方式
     const handleOk = () => {
       dialog.style.display = 'none';
       cleanup();
@@ -1602,6 +1976,38 @@ class SSHClient {
   }
 
   // 通知提示
+  // 切换侧边栏显示/隐藏
+  toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const expandBtn = document.getElementById('sidebarExpand');
+    const isCollapsed = sidebar.classList.contains('collapsed');
+
+    if (isCollapsed) {
+      // 展开侧边栏
+      sidebar.classList.remove('collapsed');
+      expandBtn.style.display = 'none';
+      // 保存状态
+      localStorage.setItem('sidebarCollapsed', 'false');
+    } else {
+      // 收起侧边栏
+      sidebar.classList.add('collapsed');
+      expandBtn.style.display = 'flex';
+      // 保存状态
+      localStorage.setItem('sidebarCollapsed', 'true');
+    }
+  }
+
+  // 加载侧边栏状态
+  loadSidebarState() {
+    const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+    if (isCollapsed) {
+      const sidebar = document.getElementById('sidebar');
+      const expandBtn = document.getElementById('sidebarExpand');
+      sidebar.classList.add('collapsed');
+      expandBtn.style.display = 'flex';
+    }
+  }
+
   showNotification(message, type = 'info') {
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
@@ -2424,6 +2830,7 @@ class SSHClient {
   showSettingsDialog() {
     this.loadSettings();
     this.loadWebDAVConfig(); // 加载 WebDAV 配置
+    this.updateMasterPasswordStatus(); // 更新主密码状态
     document.getElementById('settingsDialog').style.display = 'flex';
     
     // 只在第一次打开时初始化事件监听器
@@ -2513,6 +2920,41 @@ class SSHClient {
     // 立即同步按钮
     document.getElementById('syncNowBtn').addEventListener('click', async () => {
       await this.syncNow();
+    });
+
+    // 安全设置按钮
+    document.getElementById('setMasterPasswordBtn').addEventListener('click', () => {
+      this.showMasterPasswordDialog('set');
+      document.getElementById('settingsDialog').style.display = 'none';
+    });
+
+    document.getElementById('changeMasterPasswordBtn').addEventListener('click', () => {
+      this.showChangeMasterPasswordDialog();
+    });
+
+    document.getElementById('removeMasterPasswordBtn').addEventListener('click', async () => {
+      // 先隐藏设置对话框
+      document.getElementById('settingsDialog').style.display = 'none';
+      
+      const confirmed = await this.showConfirmDialog(
+        '移除主密码',
+        '确定要移除主密码吗？移除后应用将不再需要密码验证。'
+      );
+      
+      if (confirmed) {
+        const result = await window.electronAPI.masterPassword.reset();
+        if (result.success) {
+          // 清除提示标记，下次启动时会再次提示设置主密码
+          await window.electronAPI.masterPassword.clearPrompted();
+          this.showNotification('主密码已移除', 'success');
+          this.updateMasterPasswordStatus();
+        } else {
+          this.showNotification('移除失败: ' + result.error, 'error');
+        }
+      }
+      
+      // 恢复设置对话框
+      document.getElementById('settingsDialog').style.display = 'flex';
     });
 
     // 日志管理按钮

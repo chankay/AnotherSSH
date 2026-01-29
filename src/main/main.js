@@ -5,6 +5,7 @@ const SessionStore = require('./session-store');
 const SFTPManager = require('./sftp-manager');
 const WebDAVSync = require('./webdav-sync');
 const LogManager = require('./log-manager');
+const MasterPassword = require('./master-password');
 
 let mainWindow;
 const sshManager = new SSHManager();
@@ -12,6 +13,7 @@ const sessionStore = new SessionStore();
 const sftpManager = new SFTPManager();
 const webdavSync = new WebDAVSync();
 const logManager = new LogManager();
+const masterPassword = new MasterPassword();
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -558,4 +560,37 @@ ipcMain.handle('log:openDir', async () => {
   const logDir = logManager.getLogDir();
   await shell.openPath(logDir);
   return { success: true };
+});
+
+// 主密码相关
+ipcMain.handle('master-password:has', async () => {
+  return { success: true, hasPassword: masterPassword.hasPassword() };
+});
+
+ipcMain.handle('master-password:hasPrompted', async () => {
+  return { success: true, hasPrompted: masterPassword.hasPrompted() };
+});
+
+ipcMain.handle('master-password:setPrompted', async () => {
+  return masterPassword.setPrompted();
+});
+
+ipcMain.handle('master-password:clearPrompted', async () => {
+  return masterPassword.clearPrompted();
+});
+
+ipcMain.handle('master-password:set', async (event, password) => {
+  return masterPassword.setPassword(password);
+});
+
+ipcMain.handle('master-password:verify', async (event, password) => {
+  return masterPassword.verifyPassword(password);
+});
+
+ipcMain.handle('master-password:change', async (event, oldPassword, newPassword) => {
+  return masterPassword.changePassword(oldPassword, newPassword);
+});
+
+ipcMain.handle('master-password:reset', async () => {
+  return masterPassword.resetPassword();
 });

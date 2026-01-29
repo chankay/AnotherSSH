@@ -27,6 +27,69 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+  transition: width 0.3s ease, min-width 0.3s ease, max-width 0.3s ease;
+}
+
+.sidebar.collapsed {
+  width: 0;
+  min-width: 0;
+  max-width: 0;
+  border-right: none;
+}
+
+.sidebar-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid #3e3e42;
+  border-radius: 4px;
+  color: #cccccc;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: all 0.2s;
+}
+
+.sidebar-toggle:hover {
+  background: #3e3e42;
+  color: #ffffff;
+}
+
+.sidebar-toggle svg {
+  transition: transform 0.3s ease;
+}
+
+.sidebar.collapsed .sidebar-toggle svg {
+  transform: rotate(180deg);
+}
+
+.sidebar-expand {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 32px;
+  height: 32px;
+  background: #252526;
+  border: 1px solid #3e3e42;
+  border-radius: 4px;
+  color: #cccccc;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: all 0.2s;
+}
+
+.sidebar-expand:hover {
+  background: #3e3e42;
+  color: #ffffff;
 }
 
 .sidebar-header {
@@ -2267,3 +2330,84 @@ body.light-theme .context-menu-item:hover {
   justify-content: flex-end;
 }
 
+
+/* 安全设置 */
+.security-section {
+  padding: 10px 0;
+}
+
+.security-section h4 {
+  margin-bottom: 10px;
+  color: var(--text-color);
+}
+
+.section-description {
+  color: #888;
+  font-size: 13px;
+  margin-bottom: 15px;
+  line-height: 1.5;
+}
+
+.security-status {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 15px;
+}
+
+.security-status .status-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.security-status .status-label {
+  color: #888;
+  font-size: 13px;
+}
+
+.security-status .status-value {
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+.btn-danger {
+  background: #d32f2f;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+
+.btn-danger:hover {
+  background: #b71c1c;
+}
+
+.security-tips {
+  margin-top: 20px;
+  padding: 15px;
+  background: rgba(14, 99, 156, 0.1);
+  border-left: 3px solid var(--primary-color);
+  border-radius: 4px;
+}
+
+.security-tips h5 {
+  margin-bottom: 10px;
+  color: var(--text-color);
+  font-size: 14px;
+}
+
+.security-tips ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #888;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.security-tips li {
+  margin-bottom: 5px;
+}

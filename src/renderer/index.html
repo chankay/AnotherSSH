@@ -9,7 +9,12 @@
 </head>
 <body>
   <div class="container">
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
+      <button class="sidebar-toggle" id="sidebarToggle" title="收起侧边栏">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
+        </svg>
+      </button>
       <div class="sidebar-logo">
         <img src="../../assets/logo.svg" alt="AnotherSSH" class="logo-image">
         <div class="logo-text">
@@ -40,6 +45,11 @@
     </div>
     
     <div class="main-content">
+      <button class="sidebar-expand" id="sidebarExpand" style="display: none;" title="展开侧边栏">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
+        </svg>
+      </button>
       <div class="tabs" id="tabs">
         <!-- 标签页 -->
       </div>
@@ -159,6 +169,31 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- 主密码对话框 -->
+  <div id="masterPasswordDialog" class="dialog" style="display: none;">
+    <div class="dialog-content dialog-small">
+      <h3 id="masterPasswordTitle">设置主密码</h3>
+      <form id="masterPasswordForm">
+        <div class="form-group" id="masterPasswordGroup">
+          <label for="masterPassword">主密码</label>
+          <input type="password" id="masterPassword" placeholder="请输入主密码" />
+        </div>
+        <div class="form-group" id="masterPasswordConfirmGroup" style="display: none;">
+          <label for="masterPasswordConfirm">确认密码</label>
+          <input type="password" id="masterPasswordConfirm" placeholder="请再次输入密码" />
+        </div>
+        <div class="form-group" style="margin-top: 10px; font-size: 12px; color: #888;">
+          <p id="masterPasswordHint">主密码用于保护您的会话数据，请妥善保管。</p>
+        </div>
+        <div class="dialog-actions">
+          <button type="submit" class="btn-primary" id="masterPasswordSubmitBtn">确定</button>
+          <button type="button" class="btn-secondary" id="masterPasswordSkipBtn">暂不设置</button>
+          <button type="button" class="btn-secondary" id="masterPasswordCancelBtn" style="display: none;">取消</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -325,6 +360,7 @@
       <div class="settings-tabs">
         <button class="settings-tab active" data-tab="theme">主题</button>
         <button class="settings-tab" data-tab="terminal">终端</button>
+        <button class="settings-tab" data-tab="security">安全</button>
         <button class="settings-tab" data-tab="sync">同步</button>
         <button class="settings-tab" data-tab="logs">日志</button>
       </div>
@@ -522,6 +558,43 @@
               <li>文件名与上面"远程文件路径"保持一致</li>
               <li>然后点击"立即同步"即可</li>
             </ol>
+          </div>
+        </div>
+
+        <!-- 安全设置 -->
+        <div class="settings-panel" data-panel="security">
+          <div class="security-section">
+            <h4>🔐 主密码</h4>
+            <p class="section-description">主密码用于保护您的会话数据，防止未授权访问。</p>
+            
+            <div class="security-status">
+              <div class="status-item">
+                <span class="status-label">主密码状态:</span>
+                <span class="status-value" id="masterPasswordStatus">未设置</span>
+              </div>
+            </div>
+
+            <div class="form-group" id="setMasterPasswordGroup">
+              <button id="setMasterPasswordBtn" class="btn-primary">设置主密码</button>
+              <small>设置主密码后，每次启动应用需要输入密码验证</small>
+            </div>
+
+            <div class="form-group" id="changeMasterPasswordGroup" style="display: none;">
+              <button id="changeMasterPasswordBtn" class="btn-secondary">修改主密码</button>
+              <button id="removeMasterPasswordBtn" class="btn-danger">移除主密码</button>
+              <small>移除主密码后，应用将不再需要密码验证</small>
+            </div>
+
+            <div class="security-tips">
+              <h5>💡 安全建议</h5>
+              <ul>
+                <li>使用至少 8 位的强密码</li>
+                <li>包含大小写字母、数字和特殊字符</li>
+                <li>不要使用常见密码或个人信息</li>
+                <li>定期更换密码</li>
+                <li>妥善保管密码，忘记密码将无法恢复数据</li>
+              </ul>
+            </div>
           </div>
         </div>
 
