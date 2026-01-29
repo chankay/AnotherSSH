@@ -107,18 +107,12 @@ class SSHClient {
   }
 
   init() {
-    console.time('init-critical');
-    
     // 立即加载会话列表（最重要）
     this.loadSessions();
     this.loadSidebarState();
     
-    console.timeEnd('init-critical');
-    
     // 使用 setTimeout 延迟非关键初始化，让界面先渲染
     setTimeout(() => {
-      console.time('init-deferred');
-      
       this.setupEventListeners();
       this.loadAppVersion();
       
@@ -162,8 +156,6 @@ class SSHClient {
       
       // 异步检查主密码（不阻塞界面显示）
       this.checkMasterPassword();
-      
-      console.timeEnd('init-deferred');
     }, 0);
   }
 
@@ -193,24 +185,15 @@ class SSHClient {
       const hasPrompted = promptedResult.success && promptedResult.hasPrompted;
       const hasPassword = hasPasswordResult.hasPassword;
       
-      console.log('Master password check:', {
-        hasPassword: hasPassword,
-        hasPrompted: hasPrompted
-      });
-      
       if (!hasPassword) {
         // 没有设置主密码
         if (!hasPrompted) {
           // 首次使用，提示设置主密码
-          console.log('First time, showing master password dialog');
           this.showMasterPasswordDialog('set');
-        } else {
-          // 用户之前选择了跳过，不做任何操作（应用已经初始化）
-          console.log('User skipped before, app already initialized');
         }
+        // 用户之前选择了跳过，不做任何操作（应用已经初始化）
       } else {
         // 已有主密码，需要验证
-        console.log('Master password exists, showing verify dialog');
         this.showMasterPasswordDialog('verify');
         // 锁定界面，禁止操作
         this.lockUI();
@@ -687,10 +670,8 @@ class SSHClient {
   }
 
   async skipMasterPassword() {
-    console.log('User skipped master password setup');
     // 记录用户已经看过设置主密码的提示
     const result = await window.electronAPI.masterPassword.setPrompted();
-    console.log('Set prompted flag result:', result);
     this.hideMasterPasswordDialog();
     // 应用已经初始化，不需要再调用 initializeApp
   }
@@ -1264,19 +1245,12 @@ class SSHClient {
   handleSSHClosed(data) {
     const { sessionId } = data;
     
-    console.log(`SSH closed for session ${sessionId}`);
-    console.log(`User disconnected sessions:`, Array.from(this.userDisconnectedSessions));
-    console.log(`Is ${sessionId} in userDisconnectedSessions?`, this.userDisconnectedSessions.has(sessionId));
-    
     // 检查是否为用户主动断开
     if (this.userDisconnectedSessions.has(sessionId)) {
-      console.log(`Session ${sessionId} was user-initiated disconnect, not reconnecting`);
       this.userDisconnectedSessions.delete(sessionId);
       this.cleanupSession(sessionId);
       return;
     }
-    
-    console.log(`Session ${sessionId} was unexpected disconnect, checking auto-reconnect`);
     
     // 更新标签页状态为断开
     this.updateTabStatus(sessionId, 'disconnected');
@@ -1289,10 +1263,8 @@ class SSHClient {
     
     // 检查是否应该自动重连
     if (this.shouldAutoReconnect(sessionId)) {
-      console.log(`Starting auto-reconnect for session ${sessionId}`);
       this.startReconnect(sessionId);
     } else {
-      console.log(`Auto-reconnect disabled for session ${sessionId}`);
       // 3秒后自动关闭标签页
       setTimeout(() => {
         this.closeSession(sessionId, true);
@@ -1516,23 +1488,17 @@ class SSHClient {
   }
 
   async loadSessions() {
-    console.time('loadSessions-IPC');
     const result = await window.electronAPI.session.load();
-    console.timeEnd('loadSessions-IPC');
     
     if (result.success && result.sessions) {
-      console.time('loadSessions-process');
       this.savedSessions = result.sessions;
       
       // 提取所有分组
       this.sessionGroups = [...new Set(this.savedSessions
         .map(s => s.group)
         .filter(g => g))];
-      console.timeEnd('loadSessions-process');
       
-      console.time('renderSessionList');
       this.renderSessionList();
-      console.timeEnd('renderSessionList');
     }
   }
 

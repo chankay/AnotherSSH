@@ -5,9 +5,69 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2025-01-29
+
+### Added
+
+#### 主密码保护（可选）
+- 应用级别的主密码保护，类似 MobaXterm、Xshell
+- PBKDF2 加密算法（100,000 次迭代 + SHA-512）
+- 首次启动可选择设置或跳过
+- 设置后每次启动需要验证密码
+- 支持修改和移除主密码
+- 验证期间界面锁定保护
+- 文件系统持久化（不依赖 localStorage）
+- 设置面板中的"安全"标签页管理
+
+#### 侧边栏收起/展开
+- 快捷键 `Ctrl/Cmd + B` 切换侧边栏
+- 侧边栏收起后显示展开按钮
+- 状态持久化保存
+- 获得更大的终端显示空间
+- 平滑动画过渡效果
+
+### Changed
+
+- **启动性能优化**：会话列表立即显示，非关键功能延迟加载
+- **并行 IPC 调用**：主密码检查使用 Promise.all 并行执行
+- 优化初始化顺序，提升启动速度
+- 改进主密码对话框显示逻辑
+
+### Fixed
+
+- 修复主密码持久化问题（localStorage 改为文件系统）
+- 修复点击"暂不设置"后仍然弹出主密码对话框的问题
+- 修复启动加载慢的问题（优化初始化顺序）
+- 修复主密码对话框被设置界面遮挡的问题
+
+### Documentation
+
+- 更新 README 添加主密码功能说明
+- 更新用户手册添加完整的主密码章节
+- 添加主密码安全说明和最佳实践
+- 更新配置文件列表
+- 添加忘记主密码的处理方法
+
 ## [1.0.5] - 2025-01-29
 
 ### Added
+
+#### 主密码保护（可选）
+- 应用级别的主密码保护，类似 MobaXterm、Xshell
+- PBKDF2 加密算法（100,000 次迭代 + SHA-512）
+- 首次启动可选择设置或跳过
+- 设置后每次启动需要验证密码
+- 支持修改和移除主密码
+- 验证期间界面锁定保护
+- 文件系统持久化（不依赖 localStorage）
+- 设置面板中的"安全"标签页管理
+
+#### 侧边栏收起/展开
+- 快捷键 `Ctrl/Cmd + B` 切换侧边栏
+- 侧边栏收起后显示展开按钮
+- 状态持久化保存
+- 获得更大的终端显示空间
+- 平滑动画过渡效果
 
 #### 终端分屏
 - 支持 2-4 个终端分屏，同时操作多台服务器
@@ -63,6 +123,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **启动性能优化**：会话列表立即显示，非关键功能延迟加载
+- **并行 IPC 调用**：主密码检查使用 Promise.all 并行执行
 - 增强活动标签页视觉效果（蓝色底边、蓝色文字、加粗）
 - 优化分屏布局和样式
 - 改进重连通知界面
@@ -73,6 +135,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- 修复主密码持久化问题（localStorage 改为文件系统）
+- 修复点击"暂不设置"后仍然弹出主密码对话框的问题
+- 修复启动加载慢的问题（优化初始化顺序）
 - 修复分屏切换时显示错误的问题
 - 修复同步输入模式下会话切换异常
 - 修复手动 exit 命令触发自动重连的问题
@@ -205,6 +270,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Windows（x64 & ARM64）
 - Linux（x64 & ARM64）
 
+[1.0.6]: https://github.com/chankay/anotherssh/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/chankay/anotherssh/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/chankay/anotherssh/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/chankay/anotherssh/compare/v1.0.2...v1.0.3
