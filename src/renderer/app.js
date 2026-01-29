@@ -428,6 +428,24 @@ class SSHClient {
           this.toggleSearch();
         }
       }
+      
+      // Ctrl/Cmd + = 或 + 增大字体
+      if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
+        e.preventDefault();
+        this.increaseFontSize();
+      }
+      
+      // Ctrl/Cmd + - 减小字体
+      if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+        e.preventDefault();
+        this.decreaseFontSize();
+      }
+      
+      // Ctrl/Cmd + 0 重置字体
+      if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+        e.preventDefault();
+        this.resetFontSize();
+      }
     });
 
     // 重连按钮事件
@@ -3841,6 +3859,75 @@ class SSHClient {
     };
     
     terminalData.searchAddon.findPrevious(keyword, options);
+  }
+
+  // ========== 字体大小调整 ==========
+
+  increaseFontSize() {
+    const settings = JSON.parse(localStorage.getItem('appSettings') || '{}');
+    const currentSize = settings.fontSize || 14;
+    const newSize = Math.min(currentSize + 1, 24); // 最大 24
+    
+    if (newSize !== currentSize) {
+      settings.fontSize = newSize;
+      localStorage.setItem('appSettings', JSON.stringify(settings));
+      this.applyFontSizeToAllTerminals(newSize);
+      this.showNotification(`字体大小: ${newSize}`, 'success');
+    }
+  }
+
+  decreaseFontSize() {
+    const settings = JSON.parse(localStorage.getItem('appSettings') || '{}');
+    const currentSize = settings.fontSize || 14;
+    const newSize = Math.max(currentSize - 1, 10); // 最小 10
+    
+    if (newSize !== currentSize) {
+      settings.fontSize = newSize;
+      localStorage.setItem('appSettings', JSON.stringify(settings));
+      this.applyFontSizeToAllTerminals(newSize);
+      this.showNotification(`字体大小: ${newSize}`, 'success');
+    }
+  }
+
+  resetFontSize() {
+    const settings = JSON.parse(localStorage.getItem('appSettings') || '{}');
+    const defaultSize = 14;
+    
+    if (settings.fontSize !== defaultSize) {
+      settings.fontSize = defaultSize;
+      localStorage.setItem('appSettings', JSON.stringify(settings));
+      this.applyFontSizeToAllTerminals(defaultSize);
+      this.showNotification(`字体大小已重置: ${defaultSize}`, 'success');
+    }
+  }
+
+  applyFontSizeToAllTerminals(fontSize) {
+    // 应用到所有已打开的终端
+    this.terminals.forEach((terminalData) => {
+      if (terminalData.terminal) {
+        terminalData.terminal.options.fontSize = fontSize;
+        // 重新调整大小以应用新字体
+        if (terminalData.fitAddon) {
+          setTimeout(() => {
+            terminalData.fitAddon.fit();
+          }, 50);
+        }
+      }
+    });
+    
+    // 应用到分屏终端
+    this.splitSessions.forEach((splitData) => {
+      splitData.panes.forEach((pane) => {
+        if (pane.terminal) {
+          pane.terminal.options.fontSize = fontSize;
+          if (pane.fitAddon) {
+            setTimeout(() => {
+              pane.fitAddon.fit();
+            }, 50);
+          }
+        }
+      });
+    });
   }
 }
 
