@@ -26,14 +26,49 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan gitee.com >> ~/.ssh/known_hosts
 
+      - name: Check Gitee repository
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+        run: |
+          echo "Checking if Gitee repository exists..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" "https://gitee.com/api/v5/repos/chankay/AnotherSSH?access_token=${GITEE_TOKEN}")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          
+          if [ "$HTTP_CODE" = "404" ]; then
+            echo "❌ Gitee repository does not exist!"
+            echo "Please create the repository first:"
+            echo "1. Visit https://gitee.com/projects/new"
+            echo "2. Create repository: AnotherSSH"
+            echo "3. Do NOT initialize with README"
+            exit 1
+          elif [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ Gitee repository exists"
+          else
+            echo "⚠️  Unexpected response code: $HTTP_CODE"
+            echo "$RESPONSE"
+          fi
+
       - name: Push to Gitee
         run: |
+          # 配置 Git
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          
           # 添加 Gitee 远程仓库
-          git remote add gitee git@gitee.com:chankay/anotherssh.git || true
+          git remote add gitee git@gitee.com:chankay/AnotherSSH.git || git remote set-url gitee git@gitee.com:chankay/AnotherSSH.git
           
           # 推送所有分支和标签
-          git push -f gitee main
-          git push -f gitee --tags
+          echo "Pushing main branch..."
+          git push -f gitee main || {
+            echo "Failed to push main branch"
+            echo "This might be the first push. Trying with -u flag..."
+            git push -u -f gitee main
+          }
+          
+          echo "Pushing tags..."
+          git push -f gitee --tags || echo "No tags to push or push failed"
+          
+          echo "✅ Successfully pushed to Gitee"
 
       - name: Cleanup
         if: always()
@@ -57,7 +92,12 @@ jobs:
       - name: Download release assets from GitHub
         run: |
           mkdir -p release_assets
-          gh release download ${{ steps.release_info.outputs.TAG_NAME }} -D release_assets
+          gh release download ${{ steps.release_info.outputs.TAG_NAME }} -D release_assets || {
+            echo "Failed to download release assets"
+            echo "This might be because the release is still being created"
+            sleep 10
+            gh release download ${{ steps.release_info.outputs.TAG_NAME }} -D release_assets
+          }
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -76,8 +116,19 @@ jobs:
           
           echo "Creating Gitee Release for ${TAG_NAME}..."
           
+          # 检查 Release 是否已存在
+          EXISTING_RELEASE=$(curl -s "https://gitee.com/api/v5/repos/chankay/AnotherSSH/releases/tags/${TAG_NAME}?access_token=${GITEE_TOKEN}")
+          EXISTING_ID=$(echo "$EXISTING_RELEASE" | jq -r '.id')
+          
+          if [ "$EXISTING_ID" != "null" ] && [ -n "$EXISTING_ID" ]; then
+            echo "Release already exists with ID: $EXISTING_ID"
+            echo "Deleting existing release..."
+            curl -X DELETE "https://gitee.com/api/v5/repos/chankay/AnotherSSH/releases/${EXISTING_ID}?access_token=${GITEE_TOKEN}"
+            sleep 2
+          fi
+          
           # 创建 Gitee Release
-          RESPONSE=$(curl -s -X POST "https://gitee.com/api/v5/repos/chankay/anotherssh/releases" \
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "https://gitee.com/api/v5/repos/chankay/AnotherSSH/releases" \
             -H "Content-Type: application/json" \
             -d "{
               \"access_token\": \"${GITEE_TOKEN}\",
@@ -88,39 +139,57 @@ jobs:
               \"target_commitish\": \"main\"
             }")
           
-          echo "Gitee API Response: $RESPONSE"
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
           
-          # 提取 release id
-          RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
+          echo "HTTP Code: $HTTP_CODE"
+          echo "Response Body: $BODY"
           
-          if [ "$RELEASE_ID" = "null" ] || [ -z "$RELEASE_ID" ]; then
-            echo "Failed to create Gitee release"
-            echo "Response: $RESPONSE"
+          if [ "$HTTP_CODE" != "201" ]; then
+            echo "❌ Failed to create Gitee release"
+            echo "Response: $BODY"
             exit 1
           fi
           
-          echo "Gitee Release created with ID: $RELEASE_ID"
+          # 提取 release id
+          RELEASE_ID=$(echo "$BODY" | jq -r '.id')
+          
+          if [ "$RELEASE_ID" = "null" ] || [ -z "$RELEASE_ID" ]; then
+            echo "❌ Failed to get release ID"
+            exit 1
+          fi
+          
+          echo "✅ Gitee Release created with ID: $RELEASE_ID"
           
           # 上传所有附件
           for file in release_assets/*; do
             if [ -f "$file" ]; then
               filename=$(basename "$file")
-              echo "Uploading ${filename}..."
+              filesize=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file")
+              echo "Uploading ${filename} (${filesize} bytes)..."
               
-              curl -X POST "https://gitee.com/api/v5/repos/chankay/anotherssh/releases/${RELEASE_ID}/attach_files" \
+              UPLOAD_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+                "https://gitee.com/api/v5/repos/chankay/AnotherSSH/releases/${RELEASE_ID}/attach_files" \
                 -F "access_token=${GITEE_TOKEN}" \
-                -F "file=@${file}"
+                -F "file=@${file}")
               
-              echo "Uploaded ${filename}"
+              UPLOAD_CODE=$(echo "$UPLOAD_RESPONSE" | tail -n1)
+              
+              if [ "$UPLOAD_CODE" = "201" ]; then
+                echo "✅ Uploaded ${filename}"
+              else
+                echo "⚠️  Failed to upload ${filename} (HTTP ${UPLOAD_CODE})"
+                echo "$UPLOAD_RESPONSE"
+              fi
             fi
           done
           
-          echo "All assets uploaded successfully!"
+          echo "✅ All assets processed!"
 
       - name: Notify completion
         if: success()
         run: |
           echo "✅ Successfully synced release ${{ steps.release_info.outputs.TAG_NAME }} to Gitee"
           echo "🔗 GitHub Release: ${{ github.event.release.html_url }}"
-          echo "🔗 Gitee Release: https://gitee.com/chankay/anotherssh/releases/${{ steps.release_info.outputs.TAG_NAME }}"
+          echo "🔗 Gitee Release: https://gitee.com/chankay/AnotherSSH/releases/${{ steps.release_info.outputs.TAG_NAME }}"
 

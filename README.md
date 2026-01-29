@@ -61,7 +61,7 @@
 
 ### Gitee（国内镜像）
 
-访问 [Gitee Releases](https://gitee.com/chankay/anotherssh/releases) 下载最新版本（国内访问更快）：
+访问 [Gitee Releases](https://gitee.com/chankay/AnotherSSH/releases) 下载最新版本（国内访问更快）：
 
 ### 安装包
 
