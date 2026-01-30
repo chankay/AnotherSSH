@@ -1086,18 +1086,23 @@ class SSHClient {
     terminal.open(wrapper);
     
     // 延迟 fit 和 focus，确保 DOM 已渲染
+    // 增加延迟时间，特别是在大屏幕上首次打开时
     setTimeout(() => {
       fitAddon.fit();
       terminal.focus();
-    }, 100);
+      
+      // fit 之后再通知 SSH 终端大小，增加延迟确保尺寸计算完成
+      setTimeout(() => {
+        if (terminal.cols && terminal.rows) {
+          window.electronAPI.ssh.resize(sessionId, terminal.cols, terminal.rows);
+        }
+      }, 100);
+    }, 200);
 
     // 监听终端输入
     terminal.onData((data) => {
       this.handleTerminalInput(sessionId, data);
     });
-
-    // 初始化终端大小
-    window.electronAPI.ssh.resize(sessionId, terminal.cols, terminal.rows);
 
     this.terminals.set(sessionId, {
       terminal,
@@ -1223,6 +1228,17 @@ class SSHClient {
           terminalData.fitAddon.fit();
           // 自动聚焦到终端
           terminalData.terminal.focus();
+          
+          // fit 之后通知 SSH 终端大小
+          setTimeout(() => {
+            if (terminalData.terminal.cols && terminalData.terminal.rows) {
+              window.electronAPI.ssh.resize(
+                sessionId,
+                terminalData.terminal.cols,
+                terminalData.terminal.rows
+              );
+            }
+          }, 50);
         }, 100);
       }
     }
@@ -1514,6 +1530,22 @@ class SSHClient {
         this.showNotification('重连成功', 'success');
         this.updateTabStatus(sessionId, 'connected');
         this.clearReconnectState(sessionId);
+        
+        // 重新调整终端大小
+        setTimeout(() => {
+          if (terminalData.fitAddon && terminalData.terminal) {
+            terminalData.fitAddon.fit();
+            setTimeout(() => {
+              if (terminalData.terminal.cols && terminalData.terminal.rows) {
+                window.electronAPI.ssh.resize(
+                  result.sessionId,
+                  terminalData.terminal.cols,
+                  terminalData.terminal.rows
+                );
+              }
+            }, 50);
+          }
+        }, 100);
         
         // 更新 sessionId（可能变化了）
         if (result.sessionId !== sessionId) {
@@ -3427,6 +3459,16 @@ class SSHClient {
       // 刷新终端显示
       terminal.refresh(0, terminal.rows - 1);
       terminalData.fitAddon.fit();
+      
+      // fit 之后通知 SSH 终端大小（字体大小改变会影响 cols/rows）
+      setTimeout(() => {
+        const sessionId = terminalData.sessionId || Array.from(this.terminals.entries())
+          .find(([_, data]) => data === terminalData)?.[0];
+        
+        if (sessionId && terminal.cols && terminal.rows) {
+          window.electronAPI.ssh.resize(sessionId, terminal.cols, terminal.rows);
+        }
+      }, 50);
     });
   }
 
@@ -4214,9 +4256,6 @@ class SSHClient {
         this.handleTerminalInput(sshSessionId, data);
       });
 
-      // 初始化终端大小
-      window.electronAPI.ssh.resize(sshSessionId, terminal.cols, terminal.rows);
-      
       // 保存终端数据
       this.terminals.set(sshSessionId, {
         terminal,
@@ -4360,6 +4399,17 @@ class SSHClient {
         
         pane.fitAddon.fit();
         
+        // fit 之后通知 SSH 终端大小
+        setTimeout(() => {
+          if (pane.terminal.cols && pane.terminal.rows) {
+            window.electronAPI.ssh.resize(
+              pane.sshSessionId,
+              pane.terminal.cols,
+              pane.terminal.rows
+            );
+          }
+        }, 50);
+        
         // 添加点击事件，切换活动面板
         content.addEventListener('click', () => {
           this.activePaneId = pane.paneId;
@@ -4376,6 +4426,17 @@ class SSHClient {
     setTimeout(() => {
       splitData.panes.forEach(pane => {
         pane.fitAddon.fit();
+        
+        // fit 之后通知 SSH 终端大小
+        setTimeout(() => {
+          if (pane.terminal.cols && pane.terminal.rows) {
+            window.electronAPI.ssh.resize(
+              pane.sshSessionId,
+              pane.terminal.cols,
+              pane.terminal.rows
+            );
+          }
+        }, 50);
       });
     }, 100);
   }
@@ -4470,6 +4531,17 @@ class SSHClient {
       setTimeout(() => {
         terminalData.fitAddon.fit();
         terminalData.terminal.focus();
+        
+        // fit 之后通知 SSH 终端大小
+        setTimeout(() => {
+          if (terminalData.terminal.cols && terminalData.terminal.rows) {
+            window.electronAPI.ssh.resize(
+              this.activeSessionId,
+              terminalData.terminal.cols,
+              terminalData.terminal.rows
+            );
+          }
+        }, 50);
       }, 100);
     }
 
@@ -4740,6 +4812,20 @@ class SSHClient {
         if (terminalData.fitAddon) {
           setTimeout(() => {
             terminalData.fitAddon.fit();
+            
+            // fit 之后通知 SSH 终端大小
+            setTimeout(() => {
+              const sessionId = Array.from(this.terminals.entries())
+                .find(([_, data]) => data === terminalData)?.[0];
+              
+              if (sessionId && terminalData.terminal.cols && terminalData.terminal.rows) {
+                window.electronAPI.ssh.resize(
+                  sessionId,
+                  terminalData.terminal.cols,
+                  terminalData.terminal.rows
+                );
+              }
+            }, 50);
           }, 50);
         }
       }
@@ -4754,6 +4840,17 @@ class SSHClient {
           if (pane.fitAddon) {
             setTimeout(() => {
               pane.fitAddon.fit();
+              
+              // fit 之后通知 SSH 终端大小
+              setTimeout(() => {
+                if (pane.terminal.cols && pane.terminal.rows) {
+                  window.electronAPI.ssh.resize(
+                    pane.sshSessionId,
+                    pane.terminal.cols,
+                    pane.terminal.rows
+                  );
+                }
+              }, 50);
             }, 50);
           }
         }
