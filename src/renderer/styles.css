@@ -657,7 +657,6 @@ body.light-theme .reconnect-message {
 .terminal-wrapper {
   width: 100%;
   flex: 1;
-  padding: 10px 10px 20px 10px;  /* 上 右 下 左 */
   display: none;
   box-sizing: border-box;
   overflow: hidden;
@@ -669,9 +668,10 @@ body.light-theme .reconnect-message {
   display: block;
 }
 
-/* xterm 容器：使用 100% 高度，让 padding 自然产生间距 */
+/* xterm 容器：使用 100% 高度 */
 .terminal-wrapper > div {
   height: 100%;
+  width: 100%;
   /* 性能优化：禁用过渡效果 */
   transition: none !important;
 }
@@ -743,31 +743,69 @@ body.light-theme .reconnect-message {
 }
 
 .btn-primary {
-  background: #0e639c;
+  background: linear-gradient(135deg, #0e639c 0%, #1177bb 100%);
   color: white;
   border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
+  padding: 10px 20px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(14, 99, 156, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
 }
 
 .btn-primary:hover {
-  background: #1177bb;
+  background: linear-gradient(135deg, #1177bb 0%, #1a8cd8 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(14, 99, 156, 0.4);
+}
+
+.btn-primary:hover::before {
+  left: 100%;
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(14, 99, 156, 0.3);
 }
 
 .btn-secondary {
   background: #3e3e42;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
+  color: #cccccc;
+  border: 1px solid #555;
+  padding: 10px 20px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 
 .btn-secondary:hover {
   background: #4e4e52;
+  border-color: #666;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.btn-secondary:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 .dialog {
@@ -776,57 +814,145 @@ body.light-theme .reconnect-message {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  animation: dialogFadeIn 0.2s ease-out;
+}
+
+@keyframes dialogFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .dialog-content {
-  background: #2d2d30;
-  padding: 25px;
-  border-radius: 8px;
-  min-width: 400px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  background: linear-gradient(135deg, #2d2d30 0%, #252526 100%);
+  border-radius: 12px;
+  min-width: 450px;
+  max-width: 600px;
+  max-height: 85vh;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  animation: dialogSlideIn 0.3s ease-out;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dialog-content form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+@keyframes dialogSlideIn {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .dialog-content h3 {
-  margin-bottom: 20px;
-  font-size: 18px;
+  margin: 0;
+  padding: 30px 30px 20px 30px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: -0.3px;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dialog-body {
+  flex: 1;
+  overflow-y: scroll;
+  padding: 24px 30px;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dialog-body::-webkit-scrollbar {
+  width: 10px;
+  background: transparent;
+}
+
+.dialog-body::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 5px;
+  margin: 4px 0;
+}
+
+.dialog-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.2s;
+}
+
+.dialog-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 18px;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 5px;
-  font-size: 14px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #cccccc;
+  letter-spacing: 0.2px;
 }
 
 .form-group input,
 .form-group select {
   width: 100%;
-  padding: 8px;
-  background: #3e3e42;
-  border: 1px solid #555;
-  border-radius: 4px;
+  padding: 10px 12px;
+  background: #1e1e1e;
+  border: 1px solid #3e3e42;
+  border-radius: 6px;
   color: #d4d4d4;
   font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.form-group input:hover,
+.form-group select:hover {
+  border-color: #555;
+  background: #252526;
 }
 
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
-  border-color: #0e639c;
+  border-color: var(--primary-color);
+  background: #1e1e1e;
+  box-shadow: 0 0 0 3px rgba(14, 99, 156, 0.15);
 }
 
 .form-group label input[type="checkbox"] {
   width: auto;
   margin-right: 8px;
   vertical-align: middle;
+  cursor: pointer;
 }
 
 .input-with-button {
@@ -839,38 +965,43 @@ body.light-theme .reconnect-message {
 }
 
 .input-with-button .btn-browse {
-  padding: 8px 16px;
+  padding: 10px 18px;
   background: var(--primary-color);
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   white-space: nowrap;
   font-size: 14px;
-  transition: background 0.2s;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(14, 99, 156, 0.3);
 }
 
 .input-with-button .btn-browse:hover {
   background: #1177bb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(14, 99, 156, 0.4);
 }
 
 .input-with-button .btn-browse:active {
-  transform: scale(0.98);
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(14, 99, 156, 0.3);
 }
 
 /* 颜色选择器 */
 .color-picker {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
 .color-option {
   cursor: pointer;
-  padding: 2px;
+  padding: 3px;
   border: 2px solid transparent;
-  border-radius: 4px;
-  transition: all 0.2s;
+  border-radius: 6px;
+  transition: all 0.2s ease;
 }
 
 .color-option:hover {
@@ -880,58 +1011,73 @@ body.light-theme .reconnect-message {
 
 .color-option.selected {
   border-color: var(--primary-color);
-  box-shadow: 0 0 8px var(--primary-color);
+  box-shadow: 0 0 12px rgba(14, 99, 156, 0.5);
+  transform: scale(1.05);
 }
 
 .color-preview {
-  width: 32px;
-  height: 32px;
-  border-radius: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 
 .form-actions {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   justify-content: flex-end;
-  margin-top: 20px;
-  padding-top: 15px;
-  border-top: 1px solid var(--border-color);
+  padding: 20px 30px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
-  background: var(--bg-color);
+  background: linear-gradient(135deg, #2d2d30 0%, #252526 100%);
+  margin: 0;
 }
 
 /* 分屏会话选择对话框 */
 .split-session-options {
   display: flex;
-  gap: 15px;
-  margin-bottom: 20px;
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
 .split-option-btn {
   flex: 1;
-  padding: 20px;
-  background: var(--sidebar-bg);
-  border: 2px solid var(--border-color);
-  border-radius: 8px;
+  padding: 24px;
+  background: linear-gradient(135deg, #2d2d30 0%, #252526 100%);
+  border: 2px solid #3e3e42;
+  border-radius: 10px;
   color: var(--text-color);
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  transition: all 0.2s;
+  gap: 12px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .split-option-btn:hover {
-  background: var(--hover-bg);
+  background: linear-gradient(135deg, #3e3e42 0%, #2d2d30 100%);
   border-color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(14, 99, 156, 0.3);
+}
+
+.split-option-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .split-option-btn svg {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
+  transition: transform 0.3s ease;
+}
+
+.split-option-btn:hover svg {
+  transform: scale(1.1);
 }
 
 .split-option-btn span {
@@ -944,35 +1090,61 @@ body.light-theme .reconnect-message {
 }
 
 .session-search-box {
-  margin-bottom: 15px;
+  margin-bottom: 16px;
 }
 
 .session-search-box input {
   width: 100%;
-  padding: 10px;
-  background: var(--sidebar-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
+  padding: 12px 14px;
+  background: #1e1e1e;
+  border: 1px solid #3e3e42;
+  border-radius: 6px;
   color: var(--text-color);
   font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.session-search-box input:hover {
+  border-color: #555;
+  background: #252526;
+}
+
+.session-search-box input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  background: #1e1e1e;
+  box-shadow: 0 0 0 3px rgba(14, 99, 156, 0.15);
 }
 
 .split-sessions-container {
   max-height: 400px;
   overflow-y: auto;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
+  border: 1px solid #3e3e42;
+  border-radius: 8px;
   background: var(--sidebar-bg);
 }
 
 .split-session-item {
-  padding: 12px 15px;
-  border-bottom: 1px solid var(--border-color);
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
+  position: relative;
+}
+
+.split-session-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--primary-color);
+  transform: scaleY(0);
+  transition: transform 0.2s ease;
 }
 
 .split-session-item:last-child {
@@ -980,7 +1152,11 @@ body.light-theme .reconnect-message {
 }
 
 .split-session-item:hover {
-  background: var(--hover-bg);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.split-session-item:hover::before {
+  transform: scaleY(1);
 }
 
 .split-session-name {
@@ -991,17 +1167,19 @@ body.light-theme .reconnect-message {
 
 .split-session-info {
   font-size: 12px;
-  color: #888;
+  color: #999;
 }
 
 .split-session-group {
   display: inline-block;
-  padding: 2px 8px;
-  background: var(--primary-color);
+  padding: 3px 10px;
+  background: linear-gradient(135deg, var(--primary-color) 0%, #1177bb 100%);
   color: white;
-  border-radius: 3px;
+  border-radius: 4px;
   font-size: 11px;
+  font-weight: 500;
   margin-right: 8px;
+  box-shadow: 0 1px 3px rgba(14, 99, 156, 0.3);
 }
 
 .session-item > span {
@@ -1346,6 +1524,11 @@ body.light-theme .reconnect-message {
 
 .dialog-small {
   min-width: 350px;
+  max-height: none;
+}
+
+.dialog-small .dialog-body {
+  max-height: none;
 }
 
 .dialog-input {
