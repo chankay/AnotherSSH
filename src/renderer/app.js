@@ -140,18 +140,26 @@ class SSHClient {
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(() => {
           this.terminals.forEach((terminalData) => {
-            if (terminalData.fitAddon) {
+            if (terminalData.fitAddon && terminalData.terminal) {
+              // 先 fit，让终端重新计算大小
               terminalData.fitAddon.fit();
-              if (terminalData.terminal) {
-                window.electronAPI.ssh.resize(
-                  terminalData.sessionId, 
-                  terminalData.terminal.cols, 
-                  terminalData.terminal.rows
-                );
-              }
+              
+              // 延迟一下再通知 SSH，确保 cols/rows 已更新
+              setTimeout(() => {
+                const sessionId = terminalData.sessionId || Array.from(this.terminals.entries())
+                  .find(([_, data]) => data === terminalData)?.[0];
+                
+                if (sessionId && terminalData.terminal.cols && terminalData.terminal.rows) {
+                  window.electronAPI.ssh.resize(
+                    sessionId, 
+                    terminalData.terminal.cols, 
+                    terminalData.terminal.rows
+                  );
+                }
+              }, 50);
             }
           });
-        }, 100);
+        }, 200);
       });
       
       // 设置主密码相关的事件监听器

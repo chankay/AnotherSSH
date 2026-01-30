@@ -675,7 +675,8 @@ body.light-theme .reconnect-message {
 }
 
 .terminal-wrapper.active {
-  display: block;
+  display: flex;
+  flex-direction: column;
 }
 
 /* xterm 容器：使用 100% 高度 */
