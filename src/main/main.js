@@ -92,13 +92,12 @@ ipcMain.handle('ssh:connect', async (event, config) => {
   }
 });
 
+// SSH 数据发送 - 不等待响应
 ipcMain.handle('ssh:send', async (event, { sessionId, data }) => {
-  try {
-    await sshManager.send(sessionId, data);
-    return { success: true };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
+  sshManager.send(sessionId, data).catch(err => {
+    console.error('SSH send error:', err);
+  });
+  return { success: true };
 });
 
 ipcMain.handle('ssh:resize', async (event, { sessionId, cols, rows }) => {

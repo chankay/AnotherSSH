@@ -658,20 +658,23 @@ body.light-theme .reconnect-message {
   width: 100%;
   height: 100%;
   padding: 10px;
-  padding-bottom: 10px;  /* 恢复原来的值 */
+  padding-bottom: 10px;
   display: none;
   box-sizing: border-box;
   overflow: hidden;
+  /* 性能优化：禁用过渡效果 */
+  transition: none !important;
 }
 
 .terminal-wrapper.active {
   display: block;
 }
 
-/* xterm 容器添加底部空间，使用 transform 优化性能 */
+/* xterm 容器添加底部空间 */
 .terminal-wrapper > div {
   height: calc(100% - 30px);  /* 减去底部留白 */
-  will-change: auto;  /* 移除不必要的 GPU 加速 */
+  /* 性能优化：禁用过渡效果 */
+  transition: none !important;
 }
 
 /* 状态栏 */

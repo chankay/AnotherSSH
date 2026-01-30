@@ -384,23 +384,69 @@ class SSHClient {
       this.renderSessionList();
     });
 
-    // 键盘快捷键
+    // 键盘快捷键（合并所有快捷键到一个监听器）
     document.addEventListener('keydown', (e) => {
       // Ctrl/Cmd + N: 新建连接
       if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
         e.preventDefault();
         this.showConnectDialog();
+        return;
       }
-      // Ctrl/Cmd + F: 聚焦搜索
-      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+      
+      // Ctrl/Cmd + F: 搜索（优先终端搜索）
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f' && !e.shiftKey) {
         e.preventDefault();
-        document.getElementById('sessionSearch').focus();
+        const activeTerminal = this.terminals.get(this.activeSessionId);
+        if (activeTerminal && document.getElementById('terminalToolbar').style.display !== 'none') {
+          this.toggleSearch();
+        } else {
+          document.getElementById('sessionSearch').focus();
+        }
+        return;
       }
+      
       // Ctrl/Cmd + B: 切换侧边栏
       if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
         e.preventDefault();
         this.toggleSidebar();
+        return;
       }
+      
+      // Ctrl/Cmd + = 或 + 增大字体
+      if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
+        e.preventDefault();
+        this.increaseFontSize();
+        return;
+      }
+      
+      // Ctrl/Cmd + - 减小字体
+      if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+        e.preventDefault();
+        this.decreaseFontSize();
+        return;
+      }
+      
+      // Ctrl/Cmd + 0 重置字体
+      if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+        e.preventDefault();
+        this.resetFontSize();
+        return;
+      }
+      
+      // Ctrl/Cmd + Shift + D: 水平分屏
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'D') {
+        e.preventDefault();
+        this.splitTerminal('horizontal');
+        return;
+      }
+      
+      // Ctrl/Cmd + Shift + E: 垂直分屏
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'E') {
+        e.preventDefault();
+        this.splitTerminal('vertical');
+        return;
+      }
+      
       // ESC: 关闭对话框
       if (e.key === 'Escape') {
         const dialogs = document.querySelectorAll('.dialog');
@@ -409,16 +455,7 @@ class SSHClient {
             dialog.style.display = 'none';
           }
         });
-      }
-      // Ctrl/Cmd + Shift + D: 水平分屏
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'D') {
-        e.preventDefault();
-        this.splitTerminal('horizontal');
-      }
-      // Ctrl/Cmd + Shift + E: 垂直分屏
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'E') {
-        e.preventDefault();
-        this.splitTerminal('vertical');
+        return;
       }
     });
 
@@ -511,36 +548,6 @@ class SSHClient {
 
     document.getElementById('searchCloseBtn').addEventListener('click', () => {
       this.closeSearch();
-    });
-
-    // 全局快捷键
-    document.addEventListener('keydown', (e) => {
-      // Ctrl/Cmd + F 打开搜索
-      if ((e.ctrlKey || e.metaKey) && e.key === 'f' && !e.shiftKey) {
-        const activeTerminal = this.terminals.get(this.activeSessionId);
-        if (activeTerminal && document.getElementById('terminalToolbar').style.display !== 'none') {
-          e.preventDefault();
-          this.toggleSearch();
-        }
-      }
-      
-      // Ctrl/Cmd + = 或 + 增大字体
-      if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
-        e.preventDefault();
-        this.increaseFontSize();
-      }
-      
-      // Ctrl/Cmd + - 减小字体
-      if ((e.ctrlKey || e.metaKey) && e.key === '-') {
-        e.preventDefault();
-        this.decreaseFontSize();
-      }
-      
-      // Ctrl/Cmd + 0 重置字体
-      if ((e.ctrlKey || e.metaKey) && e.key === '0') {
-        e.preventDefault();
-        this.resetFontSize();
-      }
     });
 
     // 重连按钮事件
@@ -990,7 +997,14 @@ class SSHClient {
         foreground: '#d4d4d4'
       },
       scrollback: 1000,
-      allowProposedApi: true
+      allowProposedApi: true,
+      // 性能优化选项
+      fastScrollModifier: 'shift',
+      fastScrollSensitivity: 5,
+      scrollSensitivity: 3,
+      rendererType: 'canvas',  // 使用 canvas 渲染器（性能更好）
+      disableStdin: false,
+      windowsMode: false
     });
 
     const fitAddon = new window.FitAddon();
@@ -1205,9 +1219,12 @@ class SSHClient {
       this.updateTabStatus(sessionId, 'disconnected');
     }
     
-    await window.electronAPI.ssh.disconnect(sessionId);
-    
+    // 获取实际的 SSH sessionId（可能重连后变了）
     const terminalData = this.terminals.get(sessionId);
+    const actualSessionId = terminalData ? (terminalData.sessionId || sessionId) : sessionId;
+    
+    await window.electronAPI.ssh.disconnect(actualSessionId);
+    
     if (terminalData) {
       terminalData.terminal.dispose();
       this.terminals.delete(sessionId);
@@ -1236,7 +1253,20 @@ class SSHClient {
 
   handleSSHData(data) {
     const { sessionId, data: output } = data;
-    const terminalData = this.terminals.get(sessionId);
+    
+    // 先尝试直接查找
+    let terminalData = this.terminals.get(sessionId);
+    
+    // 如果找不到，可能是重连后 sessionId 变了
+    // 遍历所有 terminals，找到 sessionId 匹配的
+    if (!terminalData) {
+      for (const [mapKey, tData] of this.terminals) {
+        if (tData.sessionId === sessionId) {
+          terminalData = tData;
+          break;
+        }
+      }
+    }
     
     if (terminalData && output) {
       terminalData.terminal.write(output);
@@ -1246,49 +1276,89 @@ class SSHClient {
   handleSSHClosed(data) {
     const { sessionId } = data;
     
+    // 先尝试直接查找
+    let terminalData = this.terminals.get(sessionId);
+    let mapKey = sessionId;
+    
+    // 如果找不到，可能是重连后 sessionId 变了
+    // 遍历所有 terminals，找到 sessionId 匹配的
+    if (!terminalData) {
+      for (const [key, tData] of this.terminals) {
+        if (tData.sessionId === sessionId) {
+          terminalData = tData;
+          mapKey = key;
+          break;
+        }
+      }
+    }
+    
     // 检查是否为用户主动断开
-    if (this.userDisconnectedSessions.has(sessionId)) {
+    if (this.userDisconnectedSessions.has(sessionId) || this.userDisconnectedSessions.has(mapKey)) {
       this.userDisconnectedSessions.delete(sessionId);
-      this.cleanupSession(sessionId);
+      this.userDisconnectedSessions.delete(mapKey);
+      this.cleanupSession(mapKey);
       return;
     }
     
-    // 更新标签页状态为断开
-    this.updateTabStatus(sessionId, 'disconnected');
+    // 更新标签页状态为断开（使用 mapKey，因为 DOM 元素用的是原始 sessionId）
+    this.updateTabStatus(mapKey, 'disconnected');
     
-    // 在终端显示断开消息
-    const terminalData = this.terminals.get(sessionId);
     if (terminalData) {
+      // 标记为已断开，阻止发送数据
+      terminalData.disconnected = true;
+      
+      // 显示断开消息和重连提示
       terminalData.terminal.write('\r\n\x1b[31m[连接已断开]\x1b[0m\r\n');
+      terminalData.terminal.write('\x1b[33m按 Enter 键重新连接，或关闭此标签页\x1b[0m\r\n');
+      
+      // 保存重连标记
+      terminalData.waitingForReconnect = true;
     }
+  }
+  
+  async reconnectSession(sessionId) {
+    const terminalData = this.terminals.get(sessionId);
+    if (!terminalData) return;
     
-    // 检查是否应该自动重连
-    if (this.shouldAutoReconnect(sessionId)) {
-      this.startReconnect(sessionId);
-    } else {
-      // 3秒后自动关闭标签页
-      setTimeout(() => {
-        this.closeSession(sessionId, true);
-      }, 3000);
+    const config = terminalData.config;
+    
+    try {
+      terminalData.terminal.write('\r\n\x1b[33m[正在重新连接...]\x1b[0m\r\n');
+      this.updateTabStatus(sessionId, 'connecting');
+      
+      // 建立新连接
+      const result = await window.electronAPI.ssh.connect(config);
+      
+      if (result.success) {
+        const newSessionId = result.sessionId;
+        
+        // 只更新 terminalData.sessionId 用于发送数据
+        // 不更新 Map 的 key，不更新任何 DOM id
+        // 这样所有查找逻辑都不受影响
+        terminalData.sessionId = newSessionId;
+        terminalData.disconnected = false;
+        terminalData.waitingForReconnect = false;
+        
+        terminalData.terminal.write('\r\n\x1b[32m[重连成功]\x1b[0m\r\n');
+        this.updateTabStatus(sessionId, 'connected');
+        this.showNotification('重连成功', 'success');
+      } else {
+        terminalData.terminal.write(`\r\n\x1b[31m[重连失败: ${result.error}]\x1b[0m\r\n`);
+        terminalData.terminal.write('\x1b[33m按 Enter 键重试\x1b[0m\r\n');
+        this.updateTabStatus(sessionId, 'disconnected');
+        terminalData.waitingForReconnect = true;
+      }
+    } catch (error) {
+      terminalData.terminal.write(`\r\n\x1b[31m[重连失败: ${error.message}]\x1b[0m\r\n`);
+      terminalData.terminal.write('\x1b[33m按 Enter 键重试\x1b[0m\r\n');
+      this.updateTabStatus(sessionId, 'disconnected');
+      terminalData.waitingForReconnect = true;
     }
   }
 
   shouldAutoReconnect(sessionId) {
-    // 获取设置
-    const settings = JSON.parse(localStorage.getItem('appSettings') || '{}');
-    
-    // 检查是否启用自动重连（默认启用）
-    if (settings.autoReconnect === false) {
-      return false;
-    }
-    
-    // 检查终端是否还存在
-    const terminalData = this.terminals.get(sessionId);
-    if (!terminalData) {
-      return false;
-    }
-    
-    return true;
+    // 禁用自动重连
+    return false;
   }
 
   startReconnect(sessionId) {
@@ -3861,7 +3931,14 @@ class SSHClient {
           foreground: '#d4d4d4'
         },
         scrollback: 1000,
-        allowProposedApi: true
+        allowProposedApi: true,
+        // 性能优化选项
+        fastScrollModifier: 'shift',
+        fastScrollSensitivity: 5,
+        scrollSensitivity: 3,
+        rendererType: 'canvas',
+        disableStdin: false,
+        windowsMode: false
       });
 
       const fitAddon = new window.FitAddon();
@@ -4053,7 +4130,11 @@ class SSHClient {
 
     // 断开 SSH 连接
     if (pane.sshSessionId) {
-      await window.electronAPI.ssh.disconnect(pane.sshSessionId);
+      // 获取实际的 SSH sessionId（可能重连后变了）
+      const terminalData = this.terminals.get(pane.sshSessionId);
+      const actualSessionId = terminalData ? (terminalData.sessionId || pane.sshSessionId) : pane.sshSessionId;
+      
+      await window.electronAPI.ssh.disconnect(actualSessionId);
       this.terminals.delete(pane.sshSessionId);
     }
 
@@ -4087,7 +4168,11 @@ class SSHClient {
     
     panesToClose.forEach(async (pane) => {
       if (pane.sshSessionId && pane.sshSessionId !== this.activeSessionId) {
-        await window.electronAPI.ssh.disconnect(pane.sshSessionId);
+        // 获取实际的 SSH sessionId（可能重连后变了）
+        const terminalData = this.terminals.get(pane.sshSessionId);
+        const actualSessionId = terminalData ? (terminalData.sessionId || pane.sshSessionId) : pane.sshSessionId;
+        
+        await window.electronAPI.ssh.disconnect(actualSessionId);
         this.terminals.delete(pane.sshSessionId);
       }
     });
@@ -4172,84 +4257,77 @@ class SSHClient {
   }
 
   handleTerminalInput(sessionId, data) {
-    // 检测是否输入了退出命令
-    if (!this.commandBuffers.has(sessionId)) {
-      this.commandBuffers.set(sessionId, '');
-    }
+    let terminalData = this.terminals.get(sessionId);
     
-    let buffer = this.commandBuffers.get(sessionId);
-    let isExitCommand = false;
-    
-    // 处理输入
-    if (data === '\r') {
-      // 回车键，检查命令
-      const command = buffer.trim().toLowerCase();
-      
-      // 检测退出命令
-      if (command === 'exit' || command === 'logout' || command === 'quit') {
-        console.log(`Detected exit command for session ${sessionId}`);
-        isExitCommand = true;
-        
-        // 根据同步模式标记相应的会话（在发送命令之前标记）
-        if (this.syncInputMode === 'OFF') {
-          this.userDisconnectedSessions.add(sessionId);
-          console.log(`Marked session ${sessionId} as user-disconnected`);
-        } else if (this.syncInputMode === 'ALL') {
-          // 标记所有会话
-          this.terminals.forEach((termData, sid) => {
-            this.userDisconnectedSessions.add(sid);
-            console.log(`Marked session ${sid} as user-disconnected (ALL mode)`);
-          });
-        } else if (this.syncInputMode === 'SPLIT') {
-          // 标记当前分屏的所有面板
-          const splitData = this.splitSessions.get(this.activeSessionId);
-          if (splitData) {
-            splitData.panes.forEach(pane => {
-              this.userDisconnectedSessions.add(pane.sshSessionId);
-              console.log(`Marked session ${pane.sshSessionId} as user-disconnected (SPLIT mode)`);
-            });
-          } else {
-            this.userDisconnectedSessions.add(sessionId);
-            console.log(`Marked session ${sessionId} as user-disconnected (SPLIT mode, no split data)`);
-          }
+    // 如果找不到，可能是重连后 sessionId 变了
+    // 遍历所有 terminals，找到 terminal 对象匹配的那个
+    if (!terminalData) {
+      for (const [sid, tData] of this.terminals) {
+        // 检查是否是同一个 terminal 对象（通过引用比较）
+        // 但我们没有 terminal 引用，所以这个方法不行
+        // 改为：如果只有一个 terminal，就用那个
+        if (this.terminals.size === 1) {
+          terminalData = tData;
+          sessionId = sid; // 更新 sessionId
+          break;
         }
       }
       
-      // 清空缓冲区
-      this.commandBuffers.set(sessionId, '');
-    } else if (data === '\x7f' || data === '\b') {
-      // 退格键，删除最后一个字符
-      buffer = buffer.slice(0, -1);
-      this.commandBuffers.set(sessionId, buffer);
-    } else if (data === '\x03') {
-      // Ctrl+C，清空缓冲区
-      this.commandBuffers.set(sessionId, '');
-    } else if (data.length === 1 && data.charCodeAt(0) >= 32 && data.charCodeAt(0) < 127) {
-      // 可打印字符，添加到缓冲区
-      buffer += data;
-      this.commandBuffers.set(sessionId, buffer);
+      if (!terminalData) {
+        return;
+      }
     }
     
-    // 发送数据（在标记之后发送，确保标记先完成）
-    if (this.syncInputMode === 'OFF') {
-      // 正常模式，只发送到当前会话
-      window.electronAPI.ssh.send(sessionId, data);
-    } else if (this.syncInputMode === 'ALL') {
-      // 同步到所有会话
-      this.terminals.forEach((termData, sid) => {
-        window.electronAPI.ssh.send(sid, data);
-      });
-    } else if (this.syncInputMode === 'SPLIT') {
-      // 同步到当前分屏的所有面板
-      const splitData = this.splitSessions.get(this.activeSessionId);
-      if (splitData) {
-        splitData.panes.forEach(pane => {
-          window.electronAPI.ssh.send(pane.sshSessionId, data);
-        });
-      } else {
-        // 如果不在分屏模式，回退到正常模式
-        window.electronAPI.ssh.send(sessionId, data);
+    // 检查是否等待重连
+    if (terminalData.waitingForReconnect) {
+      if (data === '\r') {
+        // 按回车键触发重连
+        terminalData.waitingForReconnect = false;
+        this.reconnectSession(sessionId);
       }
+      return; // 等待重连时不发送其他数据
+    }
+    
+    // 检查是否已断开（但不在等待重连状态）
+    if (terminalData.disconnected) {
+      return; // 已断开时不发送数据
+    }
+    
+    // 使用 terminalData.sessionId 而不是闭包中的 sessionId
+    // 这样重连后可以使用新的 sessionId
+    const currentSessionId = terminalData.sessionId || sessionId;
+    
+    // 直接发送数据，不做任何处理（最快速度）
+    switch (this.syncInputMode) {
+      case 'OFF':
+        window.electronAPI.ssh.send(currentSessionId, data);
+        break;
+        
+      case 'ALL':
+        // 批量发送到所有会话
+        for (const [sid, tData] of this.terminals) {
+          const targetSessionId = tData.sessionId || sid;
+          window.electronAPI.ssh.send(targetSessionId, data);
+        }
+        break;
+        
+      case 'SPLIT':
+        const splitData = this.splitSessions.get(this.activeSessionId);
+        if (splitData) {
+          // 批量发送到分屏面板
+          for (const pane of splitData.panes) {
+            // 获取最新的 sessionId（可能重连后变了）
+            const paneTerminalData = this.terminals.get(pane.sshSessionId);
+            const actualSessionId = paneTerminalData ? (paneTerminalData.sessionId || pane.sshSessionId) : pane.sshSessionId;
+            window.electronAPI.ssh.send(actualSessionId, data);
+          }
+        } else {
+          window.electronAPI.ssh.send(currentSessionId, data);
+        }
+        break;
+        
+      default:
+        window.electronAPI.ssh.send(currentSessionId, data);
     }
   }
 
