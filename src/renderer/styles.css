@@ -211,6 +211,7 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  background: transparent; /* 让终端背景色透过 */
 }
 
 /* 终端工具栏 */
@@ -644,14 +645,23 @@ body.light-theme .reconnect-message {
 .split-pane-content {
   flex: 1;
   overflow: hidden;
-  padding: 10px;
-  padding-bottom: 10px;  /* 恢复原来的值 */
+  padding: 0;  /* 移除 padding，让终端填满 */
   box-sizing: border-box;
 }
 
-/* 分屏终端内容添加底部空间 */
+/* 确保分屏终端填满容器 */
 .split-pane-content > div {
-  height: calc(100% - 30px);  /* 减去底部留白 */
+  height: 100%;
+  width: 100%;
+}
+
+/* 分屏终端的左侧间距 */
+.split-pane-content .xterm {
+  padding-left: 3px !important;
+}
+
+.split-pane-content .xterm-screen {
+  padding-left: 3px !important;
 }
 
 .terminal-wrapper {
@@ -674,6 +684,21 @@ body.light-theme .reconnect-message {
   width: 100%;
   /* 性能优化：禁用过渡效果 */
   transition: none !important;
+}
+
+/* 确保 xterm 元素填满容器 */
+.terminal-wrapper .xterm {
+  height: 100% !important;
+  width: 100% !important;
+  padding-left: 3px !important; /* 左侧间距 */
+}
+
+.terminal-wrapper .xterm-viewport {
+  overflow-y: auto !important;
+}
+
+.terminal-wrapper .xterm-screen {
+  padding-left: 3px !important; /* 确保文字有左侧间距 */
 }
 
 /* 状态栏 */
@@ -833,7 +858,7 @@ body.light-theme .reconnect-message {
 }
 
 .dialog-content {
-  background: linear-gradient(135deg, #2d2d30 0%, #252526 100%);
+  background: var(--dialog-bg);
   border-radius: 12px;
   min-width: 450px;
   max-width: 600px;
@@ -926,25 +951,25 @@ body.light-theme .reconnect-message {
 .form-group select {
   width: 100%;
   padding: 10px 12px;
-  background: #1e1e1e;
-  border: 1px solid #3e3e42;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
   border-radius: 6px;
-  color: #d4d4d4;
+  color: var(--text-color);
   font-size: 14px;
   transition: all 0.2s ease;
 }
 
 .form-group input:hover,
 .form-group select:hover {
-  border-color: #555;
-  background: #252526;
+  border-color: var(--hover-bg);
+  background: var(--bg-color);
 }
 
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
   border-color: var(--primary-color);
-  background: #1e1e1e;
+  background: var(--input-bg);
   box-shadow: 0 0 0 3px rgba(14, 99, 156, 0.15);
 }
 
@@ -1031,7 +1056,7 @@ body.light-theme .reconnect-message {
   padding: 20px 30px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
-  background: linear-gradient(135deg, #2d2d30 0%, #252526 100%);
+  background: var(--dialog-bg);
   margin: 0;
 }
 
@@ -2135,6 +2160,14 @@ button:disabled:hover {
   --text-color: #d4d4d4;
   --border-color: #3e3e42;
   --hover-bg: #3e3e42;
+  /* 对话框和输入框专用 */
+  --dialog-bg: #2d2d30;
+  --input-bg: #1e1e1e;
+  --input-border: #3e3e42;
+  /* 状态颜色 */
+  --success-color: #4caf50;
+  --error-color: #f44336;
+  --warning-color: #ff9800;
 }
 
 /* 应用主题变量 */

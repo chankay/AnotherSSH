@@ -202,77 +202,79 @@
     <div class="dialog-content">
       <h3>新建 SSH 连接</h3>
       <form id="connectForm">
-        <div class="form-group">
-          <label>主机地址:</label>
-          <input type="text" id="host" required placeholder="192.168.1.1">
-        </div>
-        <div class="form-group">
-          <label>端口:</label>
-          <input type="number" id="port" value="22" required>
-        </div>
-        <div class="form-group">
-          <label>用户名:</label>
-          <input type="text" id="username" required placeholder="root">
-        </div>
-        <div class="form-group">
-          <label>会话名称（可选）:</label>
-          <input type="text" id="sessionName" placeholder="自动生成">
-        </div>
-        <div class="form-group">
-          <label>分组:</label>
-          <select id="sessionGroup">
-            <option value="">默认分组</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>标签颜色:</label>
-          <div class="color-picker">
-            <div class="color-option" data-color="" title="默认">
-              <div class="color-preview" style="background: #888;"></div>
-            </div>
-            <div class="color-option" data-color="#4ec9b0" title="绿色 - 开发环境">
-              <div class="color-preview" style="background: #4ec9b0;"></div>
-            </div>
-            <div class="color-option" data-color="#ffa500" title="橙色 - 测试环境">
-              <div class="color-preview" style="background: #ffa500;"></div>
-            </div>
-            <div class="color-option" data-color="#f48771" title="红色 - 生产环境">
-              <div class="color-preview" style="background: #f48771;"></div>
-            </div>
-            <div class="color-option" data-color="#569cd6" title="蓝色">
-              <div class="color-preview" style="background: #569cd6;"></div>
-            </div>
-            <div class="color-option" data-color="#c586c0" title="紫色">
-              <div class="color-preview" style="background: #c586c0;"></div>
-            </div>
-            <div class="color-option" data-color="#dcdcaa" title="黄色">
-              <div class="color-preview" style="background: #dcdcaa;"></div>
-            </div>
+        <div class="dialog-body">
+          <div class="form-group">
+            <label>主机地址:</label>
+            <input type="text" id="host" required placeholder="192.168.1.1">
           </div>
-          <input type="hidden" id="sessionColor" value="">
-        </div>
-        <div class="form-group">
-          <label>
-            <input type="checkbox" id="saveSession" checked>
-            保存此会话配置
-          </label>
-        </div>
-        <div class="form-group">
-          <label>认证方式:</label>
-          <select id="authType">
-            <option value="password">密码</option>
-            <option value="key">密钥</option>
-          </select>
-        </div>
-        <div class="form-group" id="passwordGroup">
-          <label>密码:</label>
-          <input type="password" id="password">
-        </div>
-        <div class="form-group" id="keyGroup" style="display: none;">
-          <label>私钥路径:</label>
-          <div class="input-with-button">
-            <input type="text" id="privateKey" placeholder="点击浏览选择密钥文件">
-            <button type="button" id="browseKeyBtn" class="btn-browse">浏览...</button>
+          <div class="form-group">
+            <label>端口:</label>
+            <input type="number" id="port" value="22" required>
+          </div>
+          <div class="form-group">
+            <label>用户名:</label>
+            <input type="text" id="username" required placeholder="root">
+          </div>
+          <div class="form-group">
+            <label>会话名称（可选）:</label>
+            <input type="text" id="sessionName" placeholder="自动生成">
+          </div>
+          <div class="form-group">
+            <label>分组:</label>
+            <select id="sessionGroup">
+              <option value="">默认分组</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>标签颜色:</label>
+            <div class="color-picker">
+              <div class="color-option" data-color="" title="默认">
+                <div class="color-preview" style="background: #888;"></div>
+              </div>
+              <div class="color-option" data-color="#4ec9b0" title="绿色 - 开发环境">
+                <div class="color-preview" style="background: #4ec9b0;"></div>
+              </div>
+              <div class="color-option" data-color="#ffa500" title="橙色 - 测试环境">
+                <div class="color-preview" style="background: #ffa500;"></div>
+              </div>
+              <div class="color-option" data-color="#f48771" title="红色 - 生产环境">
+                <div class="color-preview" style="background: #f48771;"></div>
+              </div>
+              <div class="color-option" data-color="#569cd6" title="蓝色">
+                <div class="color-preview" style="background: #569cd6;"></div>
+              </div>
+              <div class="color-option" data-color="#c586c0" title="紫色">
+                <div class="color-preview" style="background: #c586c0;"></div>
+              </div>
+              <div class="color-option" data-color="#dcdcaa" title="黄色">
+                <div class="color-preview" style="background: #dcdcaa;"></div>
+              </div>
+            </div>
+            <input type="hidden" id="sessionColor" value="">
+          </div>
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="saveSession" checked>
+              保存此会话配置
+            </label>
+          </div>
+          <div class="form-group">
+            <label>认证方式:</label>
+            <select id="authType">
+              <option value="password">密码</option>
+              <option value="key">密钥</option>
+            </select>
+          </div>
+          <div class="form-group" id="passwordGroup">
+            <label>密码:</label>
+            <input type="password" id="password">
+          </div>
+          <div class="form-group" id="keyGroup" style="display: none;">
+            <label>私钥路径:</label>
+            <div class="input-with-button">
+              <input type="text" id="privateKey" placeholder="点击浏览选择密钥文件">
+              <button type="button" id="browseKeyBtn" class="btn-browse">浏览...</button>
+            </div>
           </div>
         </div>
         <div class="form-actions">
@@ -288,8 +290,10 @@
   <div id="inputDialog" class="dialog" style="display: none;">
     <div class="dialog-content dialog-small">
       <h3 id="inputDialogTitle">输入</h3>
-      <div class="form-group">
-        <input type="text" id="inputDialogValue" class="dialog-input">
+      <div class="dialog-body">
+        <div class="form-group">
+          <input type="text" id="inputDialogValue" class="dialog-input">
+        </div>
       </div>
       <div class="form-actions">
         <button type="button" id="inputDialogOk" class="btn-primary">确定</button>
@@ -302,7 +306,9 @@
   <div id="confirmDialog" class="dialog" style="display: none;">
     <div class="dialog-content dialog-small">
       <h3 id="confirmDialogTitle">确认</h3>
-      <p id="confirmDialogMessage"></p>
+      <div class="dialog-body">
+        <p id="confirmDialogMessage"></p>
+      </div>
       <div class="form-actions">
         <button type="button" id="confirmDialogOk" class="btn-primary">确定</button>
         <button type="button" id="confirmDialogCancel" class="btn-secondary">取消</button>
@@ -314,27 +320,29 @@
   <div id="splitSessionDialog" class="dialog" style="display: none;">
     <div class="dialog-content">
       <h3 id="splitSessionDialogTitle">选择分屏会话</h3>
-      <div class="split-session-options">
-        <button type="button" id="splitNewSessionBtn" class="split-option-btn">
-          <svg width="24" height="24" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2z"/>
-          </svg>
-          <span>新建连接</span>
-        </button>
-        <button type="button" id="splitSavedSessionBtn" class="split-option-btn">
-          <svg width="24" height="24" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H4z"/>
-            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
-          </svg>
-          <span>选择已保存会话</span>
-        </button>
-      </div>
-      <div id="savedSessionsList" class="saved-sessions-list" style="display: none;">
-        <div class="session-search-box">
-          <input type="text" id="splitSessionSearch" placeholder="搜索会话...">
+      <div class="dialog-body">
+        <div class="split-session-options">
+          <button type="button" id="splitNewSessionBtn" class="split-option-btn">
+            <svg width="24" height="24" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2z"/>
+            </svg>
+            <span>新建连接</span>
+          </button>
+          <button type="button" id="splitSavedSessionBtn" class="split-option-btn">
+            <svg width="24" height="24" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H4z"/>
+              <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+            </svg>
+            <span>选择已保存会话</span>
+          </button>
         </div>
-        <div id="splitSessionsContainer" class="split-sessions-container">
-          <!-- 会话列表将在这里动态生成 -->
+        <div id="savedSessionsList" class="saved-sessions-list" style="display: none;">
+          <div class="session-search-box">
+            <input type="text" id="splitSessionSearch" placeholder="搜索会话...">
+          </div>
+          <div id="splitSessionsContainer" class="split-sessions-container">
+            <!-- 会话列表将在这里动态生成 -->
+          </div>
         </div>
       </div>
       <div class="form-actions">
@@ -357,15 +365,15 @@
     <div class="dialog-content settings-dialog">
       <h3>⚙️ 设置</h3>
       
-      <div class="settings-tabs">
-        <button class="settings-tab active" data-tab="theme">主题</button>
-        <button class="settings-tab" data-tab="terminal">终端</button>
-        <button class="settings-tab" data-tab="security">安全</button>
-        <button class="settings-tab" data-tab="sync">同步</button>
-        <button class="settings-tab" data-tab="logs">日志</button>
-      </div>
+      <div class="dialog-body">
+        <div class="settings-tabs">
+          <button class="settings-tab active" data-tab="theme">主题</button>
+          <button class="settings-tab" data-tab="security">安全</button>
+          <button class="settings-tab" data-tab="sync">同步</button>
+          <button class="settings-tab" data-tab="logs">日志</button>
+        </div>
 
-      <div class="settings-content">
+        <div class="settings-content">
         <!-- 主题设置 -->
         <div class="settings-panel active" data-panel="theme">
           <div class="form-group">
@@ -433,31 +441,57 @@
             </div>
           </div>
 
-          <div class="form-group">
-            <button id="resetThemeBtn" class="btn-secondary">恢复默认</button>
-          </div>
-        </div>
+          <h4 style="margin-top: 24px; margin-bottom: 16px; color: #cccccc; font-size: 16px;">终端设置</h4>
 
-        <!-- 终端设置 -->
-        <div class="settings-panel" data-panel="terminal">
+          <div class="color-group">
+            <label>终端背景色:</label>
+            <input type="color" id="terminalBackground" value="#1e1e1e">
+            <input type="text" id="terminalBackgroundText" value="#1e1e1e" class="color-text">
+          </div>
+
+          <div class="color-group">
+            <label>终端文字颜色:</label>
+            <input type="color" id="terminalForeground" value="#d4d4d4">
+            <input type="text" id="terminalForegroundText" value="#d4d4d4" class="color-text">
+          </div>
+
+          <div class="color-group">
+            <label>光标颜色:</label>
+            <input type="color" id="terminalCursor" value="#d4d4d4">
+            <input type="text" id="terminalCursorText" value="#d4d4d4" class="color-text">
+          </div>
+
           <div class="form-group">
             <label>字体大小:</label>
-            <input type="number" id="fontSize" value="14" min="10" max="24">
+            <input type="number" id="terminalFontSize" value="14" min="10" max="24">
           </div>
 
           <div class="form-group">
             <label>字体:</label>
-            <select id="fontFamily">
+            <select id="terminalFontFamily">
+              <option value="Menlo, Monaco, 'Courier New', monospace">Menlo</option>
+              <option value="Monaco, 'Courier New', monospace">Monaco</option>
               <option value="'Courier New', monospace">Courier New</option>
-              <option value="'Monaco', monospace">Monaco</option>
-              <option value="'Menlo', monospace">Menlo</option>
               <option value="'Consolas', monospace">Consolas</option>
+              <option value="'SF Mono', monospace">SF Mono</option>
+              <option value="'Fira Code', monospace">Fira Code</option>
+              <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
+              <option value="'Source Code Pro', monospace">Source Code Pro</option>
+              <option value="'Cascadia Code', monospace">Cascadia Code</option>
+              <option value="'Cascadia Mono', monospace">Cascadia Mono</option>
+              <option value="'Roboto Mono', monospace">Roboto Mono</option>
+              <option value="'IBM Plex Mono', monospace">IBM Plex Mono</option>
+              <option value="'Hack', monospace">Hack</option>
+              <option value="'DejaVu Sans Mono', monospace">DejaVu Sans Mono</option>
+              <option value="'Ubuntu Mono', monospace">Ubuntu Mono</option>
+              <option value="'Inconsolata', monospace">Inconsolata</option>
+              <option value="'Anonymous Pro', monospace">Anonymous Pro</option>
             </select>
           </div>
 
           <div class="form-group">
             <label>光标样式:</label>
-            <select id="cursorStyle">
+            <select id="terminalCursorStyle">
               <option value="block">方块</option>
               <option value="underline">下划线</option>
               <option value="bar">竖线</option>
@@ -466,9 +500,13 @@
 
           <div class="form-group">
             <label>
-              <input type="checkbox" id="cursorBlink">
+              <input type="checkbox" id="terminalCursorBlink" checked>
               光标闪烁
             </label>
+          </div>
+
+          <div class="form-group">
+            <button id="resetThemeBtn" class="btn-secondary">恢复默认</button>
           </div>
         </div>
 

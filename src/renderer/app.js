@@ -1004,16 +1004,44 @@ class SSHClient {
   createTerminal(sessionId, config) {
     // 加载保存的设置
     const settings = JSON.parse(localStorage.getItem('appSettings') || '{}');
+    const themes = this.getPresetThemes();
+    
+    // 获取当前主题的终端配置
+    let terminalConfig;
+    if (settings.themeMode === 'custom' && settings.customTheme && settings.customTheme.terminal) {
+      terminalConfig = settings.customTheme.terminal;
+    } else if (settings.themeMode && themes[settings.themeMode]) {
+      terminalConfig = themes[settings.themeMode].terminal;
+    } else {
+      // 默认使用深色主题的终端配置
+      terminalConfig = themes.dark.terminal;
+    }
+    
+    // 如果用户有自定义终端设置，覆盖主题的终端配置
+    if (settings.terminal) {
+      terminalConfig = {
+        ...terminalConfig,
+        fontSize: settings.terminal.fontSize || terminalConfig.fontSize,
+        fontFamily: settings.terminal.fontFamily || terminalConfig.fontFamily,
+        cursorStyle: settings.terminal.cursorStyle || terminalConfig.cursorStyle,
+        cursorBlink: settings.terminal.cursorBlink !== undefined ? settings.terminal.cursorBlink : terminalConfig.cursorBlink,
+        background: settings.terminal.background || terminalConfig.background,
+        foreground: settings.terminal.foreground || terminalConfig.foreground,
+        cursor: settings.terminal.cursor || terminalConfig.cursor
+      };
+    }
     
     const terminal = new window.Terminal({
-      cursorBlink: settings.cursorBlink !== false,
-      fontSize: settings.fontSize || 14,
-      lineHeight: 1.2,  // 设置行高为字体大小的 1.2 倍，避免文字重叠
-      fontFamily: settings.fontFamily || 'Menlo, Monaco, "Courier New", monospace',
-      cursorStyle: settings.cursorStyle || 'block',
+      cursorBlink: terminalConfig.cursorBlink,
+      fontSize: terminalConfig.fontSize,
+      lineHeight: 1.2,
+      fontFamily: terminalConfig.fontFamily,
+      cursorStyle: terminalConfig.cursorStyle,
       theme: {
-        background: '#1e1e1e',
-        foreground: '#d4d4d4'
+        background: terminalConfig.background,
+        foreground: terminalConfig.foreground,
+        cursor: terminalConfig.cursor,
+        cursorAccent: terminalConfig.cursorAccent
       },
       scrollback: 1000,
       allowProposedApi: true,
@@ -1021,19 +1049,18 @@ class SSHClient {
       fastScrollModifier: 'shift',
       fastScrollSensitivity: 5,
       scrollSensitivity: 3,
-      rendererType: 'canvas',  // 使用 canvas 渲染器（性能更好）
+      rendererType: 'canvas',
       disableStdin: false,
       windowsMode: false,
-      // 减少重绘，提升性能
       windowOptions: {
         setWinSizePixels: false,
         setWinSizeChars: false
       },
       // 额外的性能优化
-      convertEol: false,  // 不自动转换行尾，减少处理
-      screenReaderMode: false,  // 禁用屏幕阅读器模式
-      drawBoldTextInBrightColors: true,  // 使用颜色而不是粗体，渲染更快
-      minimumContrastRatio: 1  // 不检查对比度，减少计算
+      convertEol: false,
+      screenReaderMode: false,
+      drawBoldTextInBrightColors: true,
+      minimumContrastRatio: 1
     });
 
     const fitAddon = new window.FitAddon();
@@ -2800,7 +2827,18 @@ class SSHClient {
         primaryColor: '#0e639c',
         textColor: '#d4d4d4',
         borderColor: '#3e3e42',
-        hoverBg: '#3e3e42'
+        hoverBg: '#3e3e42',
+        // 终端配置
+        terminal: {
+          background: '#1e1e1e',
+          foreground: '#d4d4d4',
+          cursor: '#d4d4d4',
+          cursorAccent: '#1e1e1e',
+          fontSize: 14,
+          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          cursorStyle: 'block',
+          cursorBlink: true
+        }
       },
       light: {
         name: '浅色模式',
@@ -2809,7 +2847,17 @@ class SSHClient {
         primaryColor: '#0078d4',
         textColor: '#333333',
         borderColor: '#e0e0e0',
-        hoverBg: '#e8e8e8'
+        hoverBg: '#e8e8e8',
+        terminal: {
+          background: '#ffffff',
+          foreground: '#333333',
+          cursor: '#333333',
+          cursorAccent: '#ffffff',
+          fontSize: 14,
+          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          cursorStyle: 'block',
+          cursorBlink: true
+        }
       },
       dracula: {
         name: 'Dracula',
@@ -2818,7 +2866,17 @@ class SSHClient {
         primaryColor: '#bd93f9',
         textColor: '#f8f8f2',
         borderColor: '#44475a',
-        hoverBg: '#44475a'
+        hoverBg: '#44475a',
+        terminal: {
+          background: '#282a36',
+          foreground: '#f8f8f2',
+          cursor: '#f8f8f0',
+          cursorAccent: '#282a36',
+          fontSize: 14,
+          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          cursorStyle: 'block',
+          cursorBlink: true
+        }
       },
       monokai: {
         name: 'Monokai',
@@ -2827,7 +2885,17 @@ class SSHClient {
         primaryColor: '#66d9ef',
         textColor: '#f8f8f2',
         borderColor: '#3e3d32',
-        hoverBg: '#3e3d32'
+        hoverBg: '#3e3d32',
+        terminal: {
+          background: '#272822',
+          foreground: '#f8f8f2',
+          cursor: '#f8f8f0',
+          cursorAccent: '#272822',
+          fontSize: 14,
+          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          cursorStyle: 'block',
+          cursorBlink: true
+        }
       },
       'solarized-dark': {
         name: 'Solarized Dark',
@@ -2836,7 +2904,17 @@ class SSHClient {
         primaryColor: '#268bd2',
         textColor: '#839496',
         borderColor: '#586e75',
-        hoverBg: '#073642'
+        hoverBg: '#073642',
+        terminal: {
+          background: '#002b36',
+          foreground: '#839496',
+          cursor: '#839496',
+          cursorAccent: '#002b36',
+          fontSize: 14,
+          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          cursorStyle: 'block',
+          cursorBlink: true
+        }
       },
       nord: {
         name: 'Nord',
@@ -2845,7 +2923,17 @@ class SSHClient {
         primaryColor: '#88c0d0',
         textColor: '#eceff4',
         borderColor: '#4c566a',
-        hoverBg: '#434c5e'
+        hoverBg: '#434c5e',
+        terminal: {
+          background: '#2e3440',
+          foreground: '#eceff4',
+          cursor: '#eceff4',
+          cursorAccent: '#2e3440',
+          fontSize: 14,
+          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          cursorStyle: 'block',
+          cursorBlink: true
+        }
       },
       'one-dark': {
         name: 'One Dark',
@@ -2854,7 +2942,17 @@ class SSHClient {
         primaryColor: '#61afef',
         textColor: '#abb2bf',
         borderColor: '#3e4451',
-        hoverBg: '#2c313a'
+        hoverBg: '#2c313a',
+        terminal: {
+          background: '#282c34',
+          foreground: '#abb2bf',
+          cursor: '#abb2bf',
+          cursorAccent: '#282c34',
+          fontSize: 14,
+          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          cursorStyle: 'block',
+          cursorBlink: true
+        }
       },
       'github-dark': {
         name: 'GitHub Dark',
@@ -2863,7 +2961,17 @@ class SSHClient {
         primaryColor: '#58a6ff',
         textColor: '#c9d1d9',
         borderColor: '#30363d',
-        hoverBg: '#21262d'
+        hoverBg: '#21262d',
+        terminal: {
+          background: '#0d1117',
+          foreground: '#c9d1d9',
+          cursor: '#c9d1d9',
+          cursorAccent: '#0d1117',
+          fontSize: 14,
+          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          cursorStyle: 'block',
+          cursorBlink: true
+        }
       },
       'tokyo-night': {
         name: 'Tokyo Night',
@@ -2872,7 +2980,17 @@ class SSHClient {
         primaryColor: '#7aa2f7',
         textColor: '#a9b1d6',
         borderColor: '#292e42',
-        hoverBg: '#24283b'
+        hoverBg: '#24283b',
+        terminal: {
+          background: '#1a1b26',
+          foreground: '#a9b1d6',
+          cursor: '#a9b1d6',
+          cursorAccent: '#1a1b26',
+          fontSize: 14,
+          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          cursorStyle: 'block',
+          cursorBlink: true
+        }
       },
       gruvbox: {
         name: 'Gruvbox Dark',
@@ -2881,7 +2999,17 @@ class SSHClient {
         primaryColor: '#83a598',
         textColor: '#ebdbb2',
         borderColor: '#504945',
-        hoverBg: '#3c3836'
+        hoverBg: '#3c3836',
+        terminal: {
+          background: '#282828',
+          foreground: '#ebdbb2',
+          cursor: '#ebdbb2',
+          cursorAccent: '#282828',
+          fontSize: 14,
+          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          cursorStyle: 'block',
+          cursorBlink: true
+        }
       },
       material: {
         name: 'Material',
@@ -2890,7 +3018,17 @@ class SSHClient {
         primaryColor: '#80cbc4',
         textColor: '#eeffff',
         borderColor: '#37474f',
-        hoverBg: '#314549'
+        hoverBg: '#314549',
+        terminal: {
+          background: '#263238',
+          foreground: '#eeffff',
+          cursor: '#eeffff',
+          cursorAccent: '#263238',
+          fontSize: 14,
+          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          cursorStyle: 'block',
+          cursorBlink: true
+        }
       }
     };
   }
@@ -2951,6 +3089,9 @@ class SSHClient {
     this.setupColorSync('primaryColor', 'primaryColorText');
     this.setupColorSync('textColor', 'textColorText');
     this.setupColorSync('borderColor', 'borderColorText');
+    this.setupColorSync('terminalBackground', 'terminalBackgroundText');
+    this.setupColorSync('terminalForeground', 'terminalForegroundText');
+    this.setupColorSync('terminalCursor', 'terminalCursorText');
 
     // 保存按钮
     document.getElementById('saveSettingsBtn').addEventListener('click', () => {
@@ -3116,10 +3257,17 @@ class SSHClient {
     }
 
     // 加载终端设置
-    document.getElementById('fontSize').value = settings.fontSize || 14;
-    document.getElementById('fontFamily').value = settings.fontFamily || "'Courier New', monospace";
-    document.getElementById('cursorStyle').value = settings.cursorStyle || 'block';
-    document.getElementById('cursorBlink').checked = settings.cursorBlink !== false;
+    const terminalSettings = settings.terminal || {};
+    document.getElementById('terminalBackground').value = terminalSettings.background || '#1e1e1e';
+    document.getElementById('terminalBackgroundText').value = terminalSettings.background || '#1e1e1e';
+    document.getElementById('terminalForeground').value = terminalSettings.foreground || '#d4d4d4';
+    document.getElementById('terminalForegroundText').value = terminalSettings.foreground || '#d4d4d4';
+    document.getElementById('terminalCursor').value = terminalSettings.cursor || '#d4d4d4';
+    document.getElementById('terminalCursorText').value = terminalSettings.cursor || '#d4d4d4';
+    document.getElementById('terminalFontSize').value = terminalSettings.fontSize || 14;
+    document.getElementById('terminalFontFamily').value = terminalSettings.fontFamily || "Menlo, Monaco, 'Courier New', monospace";
+    document.getElementById('terminalCursorStyle').value = terminalSettings.cursorStyle || 'block';
+    document.getElementById('terminalCursorBlink').checked = terminalSettings.cursorBlink !== false;
   }
 
   saveSettings() {
@@ -3127,10 +3275,16 @@ class SSHClient {
     
     const settings = {
       themeMode,
-      fontSize: parseInt(document.getElementById('fontSize').value),
-      fontFamily: document.getElementById('fontFamily').value,
-      cursorStyle: document.getElementById('cursorStyle').value,
-      cursorBlink: document.getElementById('cursorBlink').checked
+      terminal: {
+        background: document.getElementById('terminalBackground').value,
+        foreground: document.getElementById('terminalForeground').value,
+        cursor: document.getElementById('terminalCursor').value,
+        cursorAccent: document.getElementById('terminalBackground').value, // 使用背景色作为光标强调色
+        fontSize: parseInt(document.getElementById('terminalFontSize').value),
+        fontFamily: document.getElementById('terminalFontFamily').value,
+        cursorStyle: document.getElementById('terminalCursorStyle').value,
+        cursorBlink: document.getElementById('terminalCursorBlink').checked
+      }
     };
 
     if (themeMode === 'custom') {
@@ -3213,25 +3367,57 @@ class SSHClient {
       root.style.setProperty('--text-color', theme.textColor);
       root.style.setProperty('--border-color', theme.borderColor);
       root.style.setProperty('--hover-bg', theme.hoverBg || theme.borderColor);
+      // 对话框和输入框颜色（基于主题颜色计算）
+      root.style.setProperty('--dialog-bg', theme.sidebarBg);
+      root.style.setProperty('--input-bg', theme.bgColor);
+      root.style.setProperty('--input-border', theme.borderColor);
+    }
+
+    // 获取终端配置
+    let terminalConfig;
+    if (settings.themeMode === 'custom' && settings.customTheme && settings.customTheme.terminal) {
+      terminalConfig = settings.customTheme.terminal;
+    } else if (settings.themeMode && themes[settings.themeMode]) {
+      terminalConfig = themes[settings.themeMode].terminal;
+    } else {
+      terminalConfig = themes.dark.terminal;
+    }
+
+    // 如果用户有自定义终端设置，覆盖主题的终端配置
+    if (settings.terminal) {
+      terminalConfig = {
+        ...terminalConfig,
+        fontSize: settings.terminal.fontSize || terminalConfig.fontSize,
+        fontFamily: settings.terminal.fontFamily || terminalConfig.fontFamily,
+        cursorStyle: settings.terminal.cursorStyle || terminalConfig.cursorStyle,
+        cursorBlink: settings.terminal.cursorBlink !== undefined ? settings.terminal.cursorBlink : terminalConfig.cursorBlink,
+        background: settings.terminal.background || terminalConfig.background,
+        foreground: settings.terminal.foreground || terminalConfig.foreground,
+        cursor: settings.terminal.cursor || terminalConfig.cursor
+      };
     }
 
     // 应用终端设置到所有现有终端
     this.terminals.forEach((terminalData) => {
       const terminal = terminalData.terminal;
       
-      // 更新字体设置
-      if (settings.fontSize) {
-        terminal.options.fontSize = settings.fontSize;
-        terminal.options.lineHeight = 1.2;  // 同时更新行高
-      }
-      if (settings.fontFamily) {
-        terminal.options.fontFamily = settings.fontFamily;
-      }
-      if (settings.cursorStyle) {
-        terminal.options.cursorStyle = settings.cursorStyle;
-      }
-      terminal.options.cursorBlink = settings.cursorBlink !== false;
+      // 更新字体和光标设置
+      terminal.options.fontSize = terminalConfig.fontSize;
+      terminal.options.lineHeight = 1.2;
+      terminal.options.fontFamily = terminalConfig.fontFamily;
+      terminal.options.cursorStyle = terminalConfig.cursorStyle;
+      terminal.options.cursorBlink = terminalConfig.cursorBlink;
       
+      // 更新终端颜色主题
+      terminal.options.theme = {
+        background: terminalConfig.background,
+        foreground: terminalConfig.foreground,
+        cursor: terminalConfig.cursor,
+        cursorAccent: terminalConfig.cursorAccent
+      };
+      
+      // 刷新终端显示
+      terminal.refresh(0, terminal.rows - 1);
       terminalData.fitAddon.fit();
     });
   }
@@ -3949,17 +4135,45 @@ class SSHClient {
       
       // 加载保存的设置
       const settings = JSON.parse(localStorage.getItem('appSettings') || '{}');
+      const themes = this.getPresetThemes();
+      
+      // 获取当前主题的终端配置
+      let terminalConfig;
+      if (settings.themeMode === 'custom' && settings.customTheme && settings.customTheme.terminal) {
+        terminalConfig = settings.customTheme.terminal;
+      } else if (settings.themeMode && themes[settings.themeMode]) {
+        terminalConfig = themes[settings.themeMode].terminal;
+      } else {
+        // 默认使用深色主题的终端配置
+        terminalConfig = themes.dark.terminal;
+      }
+      
+      // 如果用户有自定义终端设置，覆盖主题的终端配置
+      if (settings.terminal) {
+        terminalConfig = {
+          ...terminalConfig,
+          fontSize: settings.terminal.fontSize || terminalConfig.fontSize,
+          fontFamily: settings.terminal.fontFamily || terminalConfig.fontFamily,
+          cursorStyle: settings.terminal.cursorStyle || terminalConfig.cursorStyle,
+          cursorBlink: settings.terminal.cursorBlink !== undefined ? settings.terminal.cursorBlink : terminalConfig.cursorBlink,
+          background: settings.terminal.background || terminalConfig.background,
+          foreground: settings.terminal.foreground || terminalConfig.foreground,
+          cursor: settings.terminal.cursor || terminalConfig.cursor
+        };
+      }
       
       // 创建终端实例
       const terminal = new window.Terminal({
-        cursorBlink: settings.cursorBlink !== false,
-        fontSize: settings.fontSize || 14,
-        lineHeight: 1.2,  // 设置行高为字体大小的 1.2 倍，避免文字重叠
-        fontFamily: settings.fontFamily || 'Menlo, Monaco, "Courier New", monospace',
-        cursorStyle: settings.cursorStyle || 'block',
+        cursorBlink: terminalConfig.cursorBlink,
+        fontSize: terminalConfig.fontSize,
+        lineHeight: 1.2,
+        fontFamily: terminalConfig.fontFamily,
+        cursorStyle: terminalConfig.cursorStyle,
         theme: {
-          background: '#1e1e1e',
-          foreground: '#d4d4d4'
+          background: terminalConfig.background,
+          foreground: terminalConfig.foreground,
+          cursor: terminalConfig.cursor,
+          cursorAccent: terminalConfig.cursorAccent
         },
         scrollback: 1000,
         allowProposedApi: true,
@@ -3970,16 +4184,15 @@ class SSHClient {
         rendererType: 'canvas',
         disableStdin: false,
         windowsMode: false,
-        // 减少重绘，提升性能
         windowOptions: {
           setWinSizePixels: false,
           setWinSizeChars: false
         },
         // 额外的性能优化
-        convertEol: false,  // 不自动转换行尾，减少处理
-        screenReaderMode: false,  // 禁用屏幕阅读器模式
-        drawBoldTextInBrightColors: true,  // 使用颜色而不是粗体，渲染更快
-        minimumContrastRatio: 1  // 不检查对比度，减少计算
+        convertEol: false,
+        screenReaderMode: false,
+        drawBoldTextInBrightColors: true,
+        minimumContrastRatio: 1
       });
 
       const fitAddon = new window.FitAddon();
