@@ -819,6 +819,7 @@ class SSHClient {
     this.editingSessionId = null;
     document.querySelector('#connectDialog h3').textContent = '新建 SSH 连接';
     document.getElementById('connectSubmitBtn').textContent = '连接';
+    document.getElementById('saveOnlyBtn').style.display = 'inline-block';
     document.getElementById('saveSession').parentElement.style.display = 'block';
     
     // 更新分组下拉列表
@@ -879,8 +880,23 @@ class SSHClient {
         
         await window.electronAPI.session.save(this.savedSessions);
         this.renderSessionList();
-        this.hideConnectDialog();
-        this.showAlert('会话已更新');
+        
+        // 保存后创建连接
+        try {
+          const result = await window.electronAPI.ssh.connect(config);
+          
+          if (result.success) {
+            this.createTerminal(result.sessionId, config);
+            this.hideConnectDialog();
+            this.showNotification('会话已更新并连接成功', 'success');
+          } else {
+            this.hideConnectDialog();
+            this.showNotification('会话已更新，但连接失败: ' + result.error, 'error');
+          }
+        } catch (error) {
+          this.hideConnectDialog();
+          this.showNotification('会话已更新，但连接错误: ' + error.message, 'error');
+        }
         return;
       }
     }
@@ -2210,7 +2226,8 @@ class SSHClient {
     // 显示对话框，标记为编辑模式
     this.editingSessionId = session.id;
     document.querySelector('#connectDialog h3').textContent = '编辑 SSH 连接';
-    document.getElementById('connectSubmitBtn').textContent = '保存';
+    document.getElementById('connectSubmitBtn').textContent = '保存并连接';
+    document.getElementById('saveOnlyBtn').style.display = 'inline-block';
     document.getElementById('connectDialog').style.display = 'flex';
   }
 
@@ -2256,6 +2273,7 @@ class SSHClient {
     this.editingSessionId = null;
     document.querySelector('#connectDialog h3').textContent = '克隆 SSH 连接';
     document.getElementById('connectSubmitBtn').textContent = '连接';
+    document.getElementById('saveOnlyBtn').style.display = 'inline-block';
     document.getElementById('connectDialog').style.display = 'flex';
   }
 
