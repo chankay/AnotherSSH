@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.9] - 2025-01-30
+
+### Fixed
+- 修复主密码对话框样式问题：
+  - 添加 dialog-body 包裹内容，统一对话框结构
+  - 将 dialog-actions 改为 form-actions，与其他对话框保持一致
+  - 优化对话框宽度、内边距、标题大小
+  - 新增 form-hint 样式，带左侧主题色边框的提示信息框
+  - 改善整体视觉效果和间距
+
 ## [1.0.8] - 2025-01-30
 
 ### Added
