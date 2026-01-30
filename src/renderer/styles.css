@@ -1549,12 +1549,34 @@ body.light-theme .reconnect-message {
 }
 
 .dialog-small {
-  min-width: 350px;
+  min-width: 400px;
+  max-width: 450px;
   max-height: none;
 }
 
 .dialog-small .dialog-body {
   max-height: none;
+  padding: 20px 30px;
+}
+
+.dialog-small h3 {
+  padding: 24px 30px 16px 30px;
+  font-size: 18px;
+}
+
+.form-hint {
+  margin-top: 8px;
+  padding: 12px;
+  background: rgba(14, 99, 156, 0.1);
+  border-left: 3px solid var(--primary-color);
+  border-radius: 4px;
+}
+
+.form-hint p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #aaa;
 }
 
 .dialog-input {

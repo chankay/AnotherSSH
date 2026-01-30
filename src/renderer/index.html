@@ -177,18 +177,20 @@
     <div class="dialog-content dialog-small">
       <h3 id="masterPasswordTitle">设置主密码</h3>
       <form id="masterPasswordForm">
-        <div class="form-group" id="masterPasswordGroup">
-          <label for="masterPassword">主密码</label>
-          <input type="password" id="masterPassword" placeholder="请输入主密码" />
+        <div class="dialog-body">
+          <div class="form-group" id="masterPasswordGroup">
+            <label for="masterPassword">主密码</label>
+            <input type="password" id="masterPassword" placeholder="请输入主密码" required />
+          </div>
+          <div class="form-group" id="masterPasswordConfirmGroup" style="display: none;">
+            <label for="masterPasswordConfirm">确认密码</label>
+            <input type="password" id="masterPasswordConfirm" placeholder="请再次输入密码" />
+          </div>
+          <div class="form-hint">
+            <p id="masterPasswordHint">主密码用于保护您的会话数据，请妥善保管。</p>
+          </div>
         </div>
-        <div class="form-group" id="masterPasswordConfirmGroup" style="display: none;">
-          <label for="masterPasswordConfirm">确认密码</label>
-          <input type="password" id="masterPasswordConfirm" placeholder="请再次输入密码" />
-        </div>
-        <div class="form-group" style="margin-top: 10px; font-size: 12px; color: #888;">
-          <p id="masterPasswordHint">主密码用于保护您的会话数据，请妥善保管。</p>
-        </div>
-        <div class="dialog-actions">
+        <div class="form-actions">
           <button type="submit" class="btn-primary" id="masterPasswordSubmitBtn">确定</button>
           <button type="button" class="btn-secondary" id="masterPasswordSkipBtn">暂不设置</button>
           <button type="button" class="btn-secondary" id="masterPasswordCancelBtn" style="display: none;">取消</button>
