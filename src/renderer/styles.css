@@ -125,11 +125,11 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  margin-bottom: 5px;
+  gap: 8px;
+  padding: 8px 10px;
+  margin-bottom: 4px;
   background: #2d2d30;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s ease;
   border: 1px solid transparent;
@@ -656,9 +656,8 @@ body.light-theme .reconnect-message {
 
 .terminal-wrapper {
   width: 100%;
-  height: 100%;
-  padding: 10px;
-  padding-bottom: 10px;
+  flex: 1;
+  padding: 10px 10px 20px 10px;  /* 上 右 下 左 */
   display: none;
   box-sizing: border-box;
   overflow: hidden;
@@ -670,9 +669,9 @@ body.light-theme .reconnect-message {
   display: block;
 }
 
-/* xterm 容器添加底部空间 */
+/* xterm 容器：使用 100% 高度，让 padding 自然产生间距 */
 .terminal-wrapper > div {
-  height: calc(100% - 30px);  /* 减去底部留白 */
+  height: 100%;
   /* 性能优化：禁用过渡效果 */
   transition: none !important;
 }
@@ -1265,7 +1264,7 @@ body.light-theme .reconnect-message {
 }
 
 .session-group {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .group-header {
@@ -1335,8 +1334,8 @@ body.light-theme .reconnect-message {
 }
 
 .group-sessions {
-  margin-top: 5px;
-  margin-left: 15px;
+  margin-top: 4px;
+  margin-left: 12px;
   overflow: hidden;
   transition: max-height 0.3s ease;
 }
