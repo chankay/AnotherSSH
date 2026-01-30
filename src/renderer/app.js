@@ -10,7 +10,10 @@ if (!window.electronAPI) {
   window.electronAPI = {
     ssh: {
       connect: (config) => window.ipcRenderer.invoke('ssh:connect', config),
-      send: (sessionId, data) => window.ipcRenderer.invoke('ssh:send', { sessionId, data }),
+      send: (sessionId, data) => {
+        // 使用单向 send 而不是双向 invoke，减少延迟
+        window.ipcRenderer.send('ssh:send', { sessionId, data });
+      },
       resize: (sessionId, cols, rows) => window.ipcRenderer.invoke('ssh:resize', { sessionId, cols, rows }),
       disconnect: (sessionId) => window.ipcRenderer.invoke('ssh:disconnect', sessionId),
       onData: (callback) => window.ipcRenderer.on('ssh:data', (event, data) => callback(data))
@@ -1004,7 +1007,17 @@ class SSHClient {
       scrollSensitivity: 3,
       rendererType: 'canvas',  // 使用 canvas 渲染器（性能更好）
       disableStdin: false,
-      windowsMode: false
+      windowsMode: false,
+      // 减少重绘，提升性能
+      windowOptions: {
+        setWinSizePixels: false,
+        setWinSizeChars: false
+      },
+      // 额外的性能优化
+      convertEol: false,  // 不自动转换行尾，减少处理
+      screenReaderMode: false,  // 禁用屏幕阅读器模式
+      drawBoldTextInBrightColors: true,  // 使用颜色而不是粗体，渲染更快
+      minimumContrastRatio: 1  // 不检查对比度，减少计算
     });
 
     const fitAddon = new window.FitAddon();
@@ -3938,7 +3951,17 @@ class SSHClient {
         scrollSensitivity: 3,
         rendererType: 'canvas',
         disableStdin: false,
-        windowsMode: false
+        windowsMode: false,
+        // 减少重绘，提升性能
+        windowOptions: {
+          setWinSizePixels: false,
+          setWinSizeChars: false
+        },
+        // 额外的性能优化
+        convertEol: false,  // 不自动转换行尾，减少处理
+        screenReaderMode: false,  // 禁用屏幕阅读器模式
+        drawBoldTextInBrightColors: true,  // 使用颜色而不是粗体，渲染更快
+        minimumContrastRatio: 1  // 不检查对比度，减少计算
       });
 
       const fitAddon = new window.FitAddon();
@@ -4257,77 +4280,61 @@ class SSHClient {
   }
 
   handleTerminalInput(sessionId, data) {
-    let terminalData = this.terminals.get(sessionId);
+    const terminalData = this.terminals.get(sessionId);
     
-    // 如果找不到，可能是重连后 sessionId 变了
-    // 遍历所有 terminals，找到 terminal 对象匹配的那个
+    // 快速路径：最常见的情况 - 单会话，无特殊状态
+    if (terminalData && !terminalData.waitingForReconnect && !terminalData.disconnected && this.syncInputMode === 'OFF') {
+      const sid = terminalData.sessionId || sessionId;
+      window.electronAPI.ssh.send(sid, data);
+      return;
+    }
+    
+    // 次快速路径：有 terminalData 但需要同步输入
+    if (terminalData && !terminalData.waitingForReconnect && !terminalData.disconnected) {
+      const currentSessionId = terminalData.sessionId || sessionId;
+      
+      if (this.syncInputMode === 'ALL') {
+        // 批量发送到所有会话
+        for (const [sid, tData] of this.terminals) {
+          window.electronAPI.ssh.send(tData.sessionId || sid, data);
+        }
+      } else if (this.syncInputMode === 'SPLIT') {
+        const splitData = this.splitSessions.get(this.activeSessionId);
+        if (splitData) {
+          // 批量发送到分屏面板
+          for (const pane of splitData.panes) {
+            const paneTerminalData = this.terminals.get(pane.sshSessionId);
+            const sid = paneTerminalData ? (paneTerminalData.sessionId || pane.sshSessionId) : pane.sshSessionId;
+            window.electronAPI.ssh.send(sid, data);
+          }
+        } else {
+          window.electronAPI.ssh.send(currentSessionId, data);
+        }
+      } else {
+        window.electronAPI.ssh.send(currentSessionId, data);
+      }
+      return;
+    }
+    
+    // 慢速路径：处理特殊情况
     if (!terminalData) {
-      for (const [sid, tData] of this.terminals) {
-        // 检查是否是同一个 terminal 对象（通过引用比较）
-        // 但我们没有 terminal 引用，所以这个方法不行
-        // 改为：如果只有一个 terminal，就用那个
-        if (this.terminals.size === 1) {
-          terminalData = tData;
-          sessionId = sid; // 更新 sessionId
-          break;
+      // 如果找不到，可能是重连后 sessionId 变了
+      if (this.terminals.size === 1) {
+        const [sid, tData] = this.terminals.entries().next().value;
+        if (tData && !tData.waitingForReconnect && !tData.disconnected) {
+          window.electronAPI.ssh.send(tData.sessionId || sid, data);
         }
       }
-      
-      if (!terminalData) {
-        return;
-      }
+      return;
     }
     
     // 检查是否等待重连
     if (terminalData.waitingForReconnect) {
       if (data === '\r') {
-        // 按回车键触发重连
         terminalData.waitingForReconnect = false;
         this.reconnectSession(sessionId);
       }
-      return; // 等待重连时不发送其他数据
-    }
-    
-    // 检查是否已断开（但不在等待重连状态）
-    if (terminalData.disconnected) {
-      return; // 已断开时不发送数据
-    }
-    
-    // 使用 terminalData.sessionId 而不是闭包中的 sessionId
-    // 这样重连后可以使用新的 sessionId
-    const currentSessionId = terminalData.sessionId || sessionId;
-    
-    // 直接发送数据，不做任何处理（最快速度）
-    switch (this.syncInputMode) {
-      case 'OFF':
-        window.electronAPI.ssh.send(currentSessionId, data);
-        break;
-        
-      case 'ALL':
-        // 批量发送到所有会话
-        for (const [sid, tData] of this.terminals) {
-          const targetSessionId = tData.sessionId || sid;
-          window.electronAPI.ssh.send(targetSessionId, data);
-        }
-        break;
-        
-      case 'SPLIT':
-        const splitData = this.splitSessions.get(this.activeSessionId);
-        if (splitData) {
-          // 批量发送到分屏面板
-          for (const pane of splitData.panes) {
-            // 获取最新的 sessionId（可能重连后变了）
-            const paneTerminalData = this.terminals.get(pane.sshSessionId);
-            const actualSessionId = paneTerminalData ? (paneTerminalData.sessionId || pane.sshSessionId) : pane.sshSessionId;
-            window.electronAPI.ssh.send(actualSessionId, data);
-          }
-        } else {
-          window.electronAPI.ssh.send(currentSessionId, data);
-        }
-        break;
-        
-      default:
-        window.electronAPI.ssh.send(currentSessionId, data);
+      return;
     }
   }
 

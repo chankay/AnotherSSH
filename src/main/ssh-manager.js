@@ -19,6 +19,11 @@ class SSHManager {
       };
 
       client.on('ready', () => {
+        // 设置 TCP_NODELAY 以减少延迟（禁用 Nagle 算法）
+        if (client._sock && client._sock.setNoDelay) {
+          client._sock.setNoDelay(true);
+        }
+        
         client.shell({ term: 'xterm-256color' }, (err, stream) => {
           if (err) {
             reject(err);
@@ -95,7 +100,11 @@ class SSHManager {
         // 添加 keepalive 配置，检测连接断开
         keepaliveInterval: 30000,  // 每 30 秒发送一次心跳
         keepaliveCountMax: 3,      // 3 次心跳失败后判定断开（90秒）
-        readyTimeout: 20000        // 连接超时 20 秒
+        readyTimeout: 20000,       // 连接超时 20 秒
+        // 性能优化：禁用 Nagle 算法，减少延迟
+        algorithms: {
+          compress: ['none', 'zlib@openssh.com', 'zlib']  // 优先不压缩，减少 CPU 开销
+        }
       };
 
       if (config.password) {
@@ -117,12 +126,9 @@ class SSHManager {
       throw new Error('Session not found or not connected');
     }
 
-    return new Promise((resolve, reject) => {
-      session.stream.write(data, (err) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    });
+    // 直接写入，不使用回调（最快）
+    // Node.js 的 stream.write() 是同步的，除非缓冲区满
+    session.stream.write(data);
   }
 
   resize(sessionId, cols, rows) {
