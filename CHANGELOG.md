@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.8] - 2025-01-30
+
+### Added
+- 终端颜色自定义：支持自定义终端背景色、前景色、光标颜色
+- 新增 11 种终端字体选项（JetBrains Mono、Source Code Pro、Cascadia Code 等）
+- 终端设置整合到主题配置中，统一管理
+
+### Fixed
+- 修复分屏终端背景色覆盖不完整的问题
+- 修复编辑连接对话框按钮逻辑（保存并连接）
+- 移除终端容器 padding，避免底部黑色不可输入区域
+
+### Changed
+- 优化终端文字左侧间距（3px），改善视觉效果
+- 优化会话列表和终端间距，界面更紧凑
+- 弹窗样式美化：渐变背景、圆角、阴影、动画效果
+- 所有弹窗支持滚动条，避免内容过长无法访问
+
+### Performance
+- 优化终端输入性能，使用单向 IPC 通信
+- 启用 TCP_NODELAY 禁用 Nagle 算法
+- 禁用 SSH 压缩，减少延迟
+- 基本感觉不到卡顿
+
 ## [1.0.7] - 2025-01-29
 
 ### Fixed
