@@ -109,6 +109,11 @@ class SSHClient {
     this.init();
   }
 
+  // 翻译辅助方法
+  t(key, defaultValue) {
+    return window.i18n ? window.i18n.t(key, defaultValue || key) : (defaultValue || key);
+  }
+
   init() {
     // 立即加载会话列表（最重要）
     this.loadSessions();
