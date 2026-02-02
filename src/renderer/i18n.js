@@ -19,6 +19,7 @@ const translations = {
     'common.clear': '清屏',
     
     // 侧边栏
+    'sidebar.title': '会话管理',
     'sidebar.newSession': '新建连接',
     'sidebar.newGroup': '新建分组',
     'sidebar.export': '导出配置',
@@ -248,6 +249,7 @@ const translations = {
     'common.clear': 'Clear',
     
     // Sidebar
+    'sidebar.title': 'Session Manager',
     'sidebar.newSession': 'New Connection',
     'sidebar.newGroup': 'New Group',
     'sidebar.export': 'Export Config',
