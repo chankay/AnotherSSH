@@ -5,6 +5,90 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 待发布的更新将在这里记录
+
+## [1.0.10] - 2025-02-02
+
+### Added
+
+#### 完整的应用菜单栏
+- **文件菜单**：新建连接、新建分组、导入/导出配置、设置、退出
+- **编辑菜单**：撤销/重做、剪切/复制/粘贴、查找、清屏
+- **查看菜单**：切换侧边栏、放大/缩小/重置缩放、重新加载、开发者工具、全屏
+- **窗口菜单**：水平/垂直分屏、关闭分屏、最小化/缩放/关闭
+- **帮助菜单**：用户手册、报告问题、项目主页、检查更新、关于
+- 所有主要功能都有快捷键支持
+- macOS 和 Windows/Linux 有不同的菜单布局
+- 菜单项通过 IPC 事件与渲染进程通信
+
+#### 会话分组嵌套支持
+- 支持多级嵌套分组（如：生产环境 → 数据库 → MySQL）
+- 使用 `/` 分隔符表示层级关系
+- 子分组显示带有缩进的层级结构
+- 分组标题右侧的 **"+"** 按钮快速创建子分组
+- 默认分组不支持创建子分组（限制）
+- 分组排序：默认分组始终在最后，其他按名称排序
+- 删除父分组会同时删除所有子分组
+
+#### 侧边栏宽度拖拽调整
+- 拖拽侧边栏右边缘调整宽度（200-600px，默认 250px）
+- 拖拽时显示蓝色高亮提示
+- 鼠标悬停时也显示高亮
+- 调整后的宽度自动保存到 localStorage
+- 拖拽时终端自动调整大小并通知 SSH 服务器
+- 适应不同的使用场景和屏幕尺寸
+
+#### 精美的关于对话框
+- 展示应用 logo（带浮动动画）
+- 显示应用名称、版本号、标语
+- 6 个主要功能特性卡片（带悬停动画）
+- 版权信息和 MIT License
+- macOS 在应用菜单中，Windows/Linux 在帮助菜单中
+
+#### 国际化支持（中英文）
+- 完整的 i18n.js 国际化框架
+- 300+ 翻译键，覆盖所有界面元素
+- 支持中文（简体）和英文
+- 语言切换后立即生效，无需重启
+- 设置面板中的语言选择器
+- 自动保存语言偏好
+
+### Changed
+
+- **优化界面显示密度**：
+  - 分组标题：padding 从 8px 10px 减至 5px 8px，字体从 14px 减至 12px
+  - 会话项：padding 从 8px 10px 减至 5px 8px，字体从 14px 减至 12px
+  - 分组计数、切换图标、操作按钮等都相应减小
+  - 整体高度减少约 30-40%，一屏能显示更多内容
+- **精简侧边栏按钮**：移除"导出配置"和"导入配置"按钮（可通过菜单访问）
+- **优化分组逻辑**：默认分组使用空字符串 `''` 作为内部标识，只在显示时使用翻译后的名称
+- **改进菜单结构**：所有功能都可通过菜单和快捷键访问
+
+### Fixed
+
+- 修复 Windows 下查看日志失败的问题（使用 data-log-path 属性存储路径）
+- 修复 Windows 路径反斜杠转义问题（通过 addEventListener 绑定事件）
+- 修复默认分组的识别和分配逻辑
+- 修复分组排序问题（默认分组始终在最后）
+- 修复嵌套分组显示混乱的问题
+- 修复 Windows 下 Ctrl+V 粘贴问题（使用 navigator.clipboard API）
+- 修复全局快捷键冲突（Ctrl/Cmd+B 只在终端没有焦点时生效）
+
+### Documentation
+
+- 更新 README.md：
+  - 添加新功能说明（嵌套分组、应用菜单、侧边栏可调、多语言等）
+  - 更新功能特性列表
+  - 更新核心功能说明
+- 更新 USER_MANUAL.md：
+  - 新增"应用菜单"章节，详细说明所有菜单功能和快捷键
+  - 会话管理章节添加嵌套分组说明
+  - 新增"侧边栏宽度调整"小节
+  - 更新所有相关章节
+- 修正 GitHub 仓库链接为 `chankay/AnotherSSH`
+
 ## [1.0.9] - 2025-01-30
 
 ### Fixed
@@ -330,8 +414,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Windows（x64 & ARM64）
 - Linux（x64 & ARM64）
 
-[1.0.6]: https://github.com/chankay/anotherssh/compare/v1.0.5...v1.0.6
-[1.0.5]: https://github.com/chankay/anotherssh/compare/v1.0.4...v1.0.5
+[1.0.10]: https://github.com/chankay/anotherssh/compare/v1.0.9...v1.0.10
+[1.0.9]: https://github.com/chankay/anotherssh/compare/v1.0.8...v1.0.9
+[1.0.8]: https://github.com/chankay/anotherssh/compare/v1.0.7...v1.0.8
 [1.0.4]: https://github.com/chankay/anotherssh/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/chankay/anotherssh/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/chankay/anotherssh/compare/v1.0.1...v1.0.2

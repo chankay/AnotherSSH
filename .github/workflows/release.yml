@@ -76,12 +76,34 @@ jobs:
         id: changelog
         run: |
           VERSION=${{ steps.get_version.outputs.VERSION }}
-          # 提取当前版本的 changelog
-          CHANGELOG=$(awk "/## \[$VERSION\]/,/## \[/" CHANGELOG.md | sed '1d;$d')
-          # 如果 changelog 为空，使用默认消息
-          if [ -z "$CHANGELOG" ]; then
+          
+          # 找到版本标题的行号
+          START_LINE=$(grep -n "^## \[${VERSION}\] -" CHANGELOG.md | cut -d: -f1)
+          
+          if [ -z "$START_LINE" ]; then
+            echo "Warning: Version ${VERSION} not found in CHANGELOG.md"
             CHANGELOG="Release version $VERSION"
+          else
+            # 找到下一个版本标题的行号
+            NEXT_LINE=$(tail -n +$((START_LINE + 1)) CHANGELOG.md | grep -n "^## \[" | head -1 | cut -d: -f1)
+            
+            if [ -z "$NEXT_LINE" ]; then
+              # 如果没有下一个版本，提取到文件末尾
+              CHANGELOG=$(tail -n +$((START_LINE + 1)) CHANGELOG.md)
+            else
+              # 提取到下一个版本之前
+              END_LINE=$((START_LINE + NEXT_LINE - 1))
+              CHANGELOG=$(sed -n "$((START_LINE + 1)),${END_LINE}p" CHANGELOG.md)
+            fi
+            
+            # 移除开头和结尾的空行
+            CHANGELOG=$(echo "$CHANGELOG" | sed '/./,$!d' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')
+            
+            if [ -z "$CHANGELOG" ]; then
+              CHANGELOG="Release version $VERSION"
+            fi
           fi
+          
           # 保存到文件
           echo "$CHANGELOG" > release_notes.md
           # 输出到 GitHub Actions
@@ -121,10 +143,34 @@ jobs:
         id: changelog
         run: |
           VERSION=${{ steps.get_version.outputs.VERSION }}
-          CHANGELOG=$(awk "/## \[$VERSION\]/,/## \[/" CHANGELOG.md | sed '1d;$d')
-          if [ -z "$CHANGELOG" ]; then
+          
+          # 找到版本标题的行号
+          START_LINE=$(grep -n "^## \[${VERSION}\] -" CHANGELOG.md | cut -d: -f1)
+          
+          if [ -z "$START_LINE" ]; then
+            echo "Warning: Version ${VERSION} not found in CHANGELOG.md"
             CHANGELOG="Release version $VERSION"
+          else
+            # 找到下一个版本标题的行号
+            NEXT_LINE=$(tail -n +$((START_LINE + 1)) CHANGELOG.md | grep -n "^## \[" | head -1 | cut -d: -f1)
+            
+            if [ -z "$NEXT_LINE" ]; then
+              # 如果没有下一个版本，提取到文件末尾
+              CHANGELOG=$(tail -n +$((START_LINE + 1)) CHANGELOG.md)
+            else
+              # 提取到下一个版本之前
+              END_LINE=$((START_LINE + NEXT_LINE - 1))
+              CHANGELOG=$(sed -n "$((START_LINE + 1)),${END_LINE}p" CHANGELOG.md)
+            fi
+            
+            # 移除开头和结尾的空行
+            CHANGELOG=$(echo "$CHANGELOG" | sed '/./,$!d' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')
+            
+            if [ -z "$CHANGELOG" ]; then
+              CHANGELOG="Release version $VERSION"
+            fi
           fi
+          
           echo "$CHANGELOG" > release_notes.md
 
       - name: Create Gitee Release

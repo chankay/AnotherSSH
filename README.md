@@ -249,6 +249,13 @@ GitHub Actions 会自动构建并发布到 Releases。
 
 - **[用户使用手册](doc/USER_MANUAL.md)** - 完整的功能说明和使用指南
 
+### 更多文档
+
+- **[用户使用手册](doc/USER_MANUAL.md)** - 完整的功能说明和使用指南
+- **[快速发布指南](doc/HOW_TO_RELEASE.md)** - 如何发布新版本（5 个步骤）
+- **[发布详细指南](doc/RELEASE_GUIDE.md)** - 完整的发布流程和最佳实践
+- **[CHANGELOG](CHANGELOG.md)** - 版本更新历史
+
 ## 🗂️ 项目结构
 
 ```
