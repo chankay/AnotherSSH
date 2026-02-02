@@ -97,6 +97,22 @@ const translations = {
     'sftp.size': '大小',
     'sftp.modifyTime': '修改时间',
     'sftp.permissions': '权限',
+    'sftp.downloadSelected': '下载选中',
+    'sftp.downloadSelectedCount': '下载选中 ({count})',
+    'sftp.menuDownload': '下载',
+    'sftp.menuOpen': '打开',
+    'sftp.menuRename': '重命名',
+    'sftp.menuDelete': '删除',
+    'sftp.mkdirTitle': '新建文件夹',
+    'sftp.mkdirPrompt': '请输入文件夹名称:',
+    'sftp.mkdirFailed': '创建文件夹失败',
+    'sftp.deleteTitle': '删除确认',
+    'sftp.deleteMessage': '确定删除 "{name}" 吗？',
+    'sftp.deleteFailed': '删除失败',
+    'sftp.renameTitle': '重命名',
+    'sftp.renamePrompt': '请输入新名称:',
+    'sftp.renameFailed': '重命名失败',
+    'sftp.closePaneTitle': '关闭此面板',
     
     // 设置
     'settings.title': '设置',
@@ -207,6 +223,12 @@ const translations = {
     'logs.view': '查看',
     'logs.export': '导出',
     'logs.delete': '删除',
+    'logs.deleteConfirm': '确定要删除这个日志文件吗？',
+    'logs.clearAllConfirm': '确定要清除所有日志文件吗？此操作不可恢复！',
+    
+    // 主题
+    'theme.dark': '深色模式',
+    'theme.light': '浅色模式',
     
     // 主密码
     'masterPassword.title': '设置主密码',
@@ -308,6 +330,10 @@ const translations = {
     'notify.sessionNotFound': '会话不存在',
     'notify.splitCreatedSuccess': '分屏创建成功',
     'notify.createSplitFailed': '创建分屏失败',
+    
+    // 移除主密码
+    'removeMasterPassword.title': '移除主密码',
+    'removeMasterPassword.message': '确定要移除主密码吗？移除后应用将不再需要密码验证。',
     
     // 主密码对话框动态文本
     'masterPassword.titleSetOptional': '设置主密码（可选）',
@@ -489,6 +515,22 @@ const translations = {
     'sftp.size': 'Size',
     'sftp.modifyTime': 'Modified',
     'sftp.permissions': 'Permissions',
+    'sftp.downloadSelected': 'Download Selected',
+    'sftp.downloadSelectedCount': 'Download Selected ({count})',
+    'sftp.menuDownload': 'Download',
+    'sftp.menuOpen': 'Open',
+    'sftp.menuRename': 'Rename',
+    'sftp.menuDelete': 'Delete',
+    'sftp.mkdirTitle': 'New Folder',
+    'sftp.mkdirPrompt': 'Enter folder name:',
+    'sftp.mkdirFailed': 'Failed to create folder',
+    'sftp.deleteTitle': 'Confirm Delete',
+    'sftp.deleteMessage': 'Are you sure you want to delete "{name}"?',
+    'sftp.deleteFailed': 'Delete failed',
+    'sftp.renameTitle': 'Rename',
+    'sftp.renamePrompt': 'Enter new name:',
+    'sftp.renameFailed': 'Rename failed',
+    'sftp.closePaneTitle': 'Close this pane',
     
     // Settings
     'settings.title': 'Settings',
@@ -599,6 +641,12 @@ const translations = {
     'logs.view': 'View',
     'logs.export': 'Export',
     'logs.delete': 'Delete',
+    'logs.deleteConfirm': 'Are you sure you want to delete this log file?',
+    'logs.clearAllConfirm': 'Are you sure you want to clear all log files? This action cannot be undone!',
+    
+    // Theme
+    'theme.dark': 'Dark Mode',
+    'theme.light': 'Light Mode',
     
     // Master Password
     'masterPassword.title': 'Set Master Password',
@@ -700,6 +748,10 @@ const translations = {
     'notify.sessionNotFound': 'Session not found',
     'notify.splitCreatedSuccess': 'Split created successfully',
     'notify.createSplitFailed': 'Failed to create split',
+    
+    // Remove Master Password
+    'removeMasterPassword.title': 'Remove Master Password',
+    'removeMasterPassword.message': 'Are you sure you want to remove master password? The app will no longer require password verification.',
     
     // Master Password Dialog Dynamic Text
     'masterPassword.titleSetOptional': 'Set Master Password (Optional)',

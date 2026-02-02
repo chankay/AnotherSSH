@@ -1617,7 +1617,7 @@ class SSHClient {
           this.terminals.delete(sessionId);
         }
       } else {
-        throw new Error(result.error || '连接失败');
+        throw new Error(result.error || this.t('connection.failed'));
       }
       
     } catch (error) {
@@ -2444,7 +2444,7 @@ class SSHClient {
     tab.className = 'tab';
     tab.id = `tab-${sftpSessionId}`;
     tab.innerHTML = `
-      <span class="tab-status connected" title="已连接"></span>
+      <span class="tab-status connected" data-i18n-title="status.connected" title="${this.t('status.connected')}"></span>
       <span class="tab-name">${config.name || config.username + '@' + config.host}</span>
       <span class="tab-sftp">SFTP</span>
       <span class="tab-close" data-session="${sftpSessionId}">✕</span>
@@ -2616,7 +2616,7 @@ class SSHClient {
     const count = this.selectedFiles.size;
     const downloadBtn = document.getElementById('sftpDownloadBtn');
     if (downloadBtn) {
-      downloadBtn.textContent = count > 0 ? `下载选中 (${count})` : '下载选中';
+      downloadBtn.textContent = count > 0 ? this.t('sftp.downloadSelectedCount').replace('{count}', count) : this.t('sftp.downloadSelected');
       downloadBtn.disabled = count === 0;
     }
   }
@@ -2716,9 +2716,9 @@ class SSHClient {
     const menuItems = [];
 
     if (file.type !== 'd') {
-      menuItems.push({ label: '下载', action: () => this.sftpDownload(sftpSessionId, file.name) });
+      menuItems.push({ label: this.t('sftp.menuDownload'), action: () => this.sftpDownload(sftpSessionId, file.name) });
     } else {
-      menuItems.push({ label: '打开', action: () => {
+      menuItems.push({ label: this.t('sftp.menuOpen'), action: () => {
         const newPath = this.currentSftpPath[sftpSessionId] === '/' 
           ? `/${file.name}` 
           : `${this.currentSftpPath[sftpSessionId]}/${file.name}`;
@@ -2726,9 +2726,9 @@ class SSHClient {
       }});
     }
 
-    menuItems.push({ label: '重命名', action: () => this.sftpRename(sftpSessionId, file.name) });
+    menuItems.push({ label: this.t('sftp.menuRename'), action: () => this.sftpRename(sftpSessionId, file.name) });
     menuItems.push({ divider: true });
-    menuItems.push({ label: '删除', action: () => this.sftpDelete(sftpSessionId, file.name) });
+    menuItems.push({ label: this.t('sftp.menuDelete'), action: () => this.sftpDelete(sftpSessionId, file.name) });
 
     menuItems.forEach(item => {
       if (item.divider) {
@@ -2807,7 +2807,7 @@ class SSHClient {
     const session = this.sftpSessions.get(this.activeSessionId);
     if (!session) return;
 
-    this.showInputDialog('新建文件夹', '请输入文件夹名称:', '', async (dirName) => {
+    this.showInputDialog(this.t('sftp.mkdirTitle'), this.t('sftp.mkdirPrompt'), '', async (dirName) => {
       if (!dirName) return;
 
       const remotePath = this.currentSftpPath[this.activeSessionId] === '/' 
@@ -2819,15 +2819,15 @@ class SSHClient {
       if (result.success) {
         this.sftpRefresh();
       } else {
-        this.showAlert('创建文件夹失败: ' + result.error);
+        this.showAlert(this.t('sftp.mkdirFailed') + ': ' + result.error);
       }
     });
   }
 
   async sftpDelete(sftpSessionId, fileName) {
     this.showConfirmDialog(
-      '删除确认',
-      `确定删除 "${fileName}" 吗？`,
+      this.t('sftp.deleteTitle'),
+      this.t('sftp.deleteMessage').replace('{name}', fileName),
       async () => {
         const session = this.sftpSessions.get(sftpSessionId);
         if (!session) return;
@@ -2841,14 +2841,14 @@ class SSHClient {
         if (result.success) {
           this.sftpRefresh();
         } else {
-          this.showAlert('删除失败: ' + result.error);
+          this.showAlert(this.t('sftp.deleteFailed') + ': ' + result.error);
         }
       }
     );
   }
 
   async sftpRename(sftpSessionId, oldName) {
-    this.showInputDialog('重命名', '请输入新名称:', oldName, async (newName) => {
+    this.showInputDialog(this.t('sftp.renameTitle'), this.t('sftp.renamePrompt'), oldName, async (newName) => {
       if (!newName || newName === oldName) return;
 
       const session = this.sftpSessions.get(sftpSessionId);
@@ -2863,7 +2863,7 @@ class SSHClient {
       if (result.success) {
         this.sftpRefresh();
       } else {
-        this.showAlert('重命名失败: ' + result.error);
+        this.showAlert(this.t('sftp.renameFailed') + ': ' + result.error);
       }
     });
   }
@@ -2931,7 +2931,7 @@ class SSHClient {
   getPresetThemes() {
     return {
       dark: {
-        name: '深色模式',
+        name: this.t('theme.dark'),
         bgColor: '#1e1e1e',
         sidebarBg: '#252526',
         primaryColor: '#0e639c',
@@ -2951,7 +2951,7 @@ class SSHClient {
         }
       },
       light: {
-        name: '浅色模式',
+        name: this.t('theme.light'),
         bgColor: '#ffffff',
         sidebarBg: '#f3f3f3',
         primaryColor: '#0078d4',
@@ -3257,8 +3257,8 @@ class SSHClient {
       document.getElementById('settingsDialog').style.display = 'none';
       
       const confirmed = await this.showConfirmDialog(
-        '移除主密码',
-        '确定要移除主密码吗？移除后应用将不再需要密码验证。'
+        this.t('removeMasterPassword.title'),
+        this.t('removeMasterPassword.message')
       );
       
       if (confirmed) {
@@ -3585,9 +3585,9 @@ class SSHClient {
     
     // 更新 title
     const statusText = {
-      connecting: '连接中',
-      connected: '已连接',
-      disconnected: '已断开'
+      connecting: this.t('status.connecting'),
+      connected: this.t('status.connected'),
+      disconnected: this.t('status.disconnected')
     };
     statusIndicator.title = statusText[status] || '';
 
@@ -3904,7 +3904,7 @@ class SSHClient {
       
       // 手动检查时显示检查中状态
       if (manual) {
-        this.showNotification('正在检查更新...', 'info');
+        this.showNotification('notify.checkingUpdates', 'info');
       }
       
       const updateInfo = await window.electronAPI.checkUpdates();
@@ -3916,14 +3916,14 @@ class SSHClient {
         }
       } else if (manual) {
         // 手动检查时，如果没有更新则提示
-        this.showNotification('当前已是最新版本', 'success');
+        this.showNotification('notify.alreadyLatest', 'success');
       }
       
       localStorage.setItem('lastUpdateCheck', Date.now().toString());
     } catch (error) {
       console.error('Check updates failed:', error);
       if (manual) {
-        this.showNotification('检查更新失败，请稍后重试', 'error');
+        this.showNotification('notify.checkUpdateFailed', 'error');
       }
     }
   }
@@ -3966,17 +3966,17 @@ class SSHClient {
             </div>
           </div>
           <div class="log-actions">
-            <button class="btn-icon" onclick="app.showLogViewer('${log.path}')" title="查看">
+            <button class="btn-icon" onclick="app.showLogViewer('${log.path}')" data-i18n-title="logs.view" title="${this.t('logs.view')}">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M8 2C4.5 2 1.5 4.5 0 8c1.5 3.5 4.5 6 8 6s6.5-2.5 8-6c-1.5-3.5-4.5-6-8-6zm0 10c-2.2 0-4-1.8-4-4s1.8-4 4-4 4 1.8 4 4-1.8 4-4 4zm0-6.5c-1.4 0-2.5 1.1-2.5 2.5s1.1 2.5 2.5 2.5 2.5-1.1 2.5-2.5-1.1-2.5-2.5-2.5z"/>
               </svg>
             </button>
-            <button class="btn-icon" onclick="app.exportLog('${log.path}')" title="导出">
+            <button class="btn-icon" onclick="app.exportLog('${log.path}')" data-i18n-title="logs.export" title="${this.t('logs.export')}">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M8 0L4 4h3v5h2V4h3L8 0zM2 12v2h12v-2H2z"/>
               </svg>
             </button>
-            <button class="btn-icon" onclick="app.deleteLog('${log.path}')" title="删除" style="color: #f44336;">
+            <button class="btn-icon" onclick="app.deleteLog('${log.path}')" data-i18n-title="logs.delete" title="${this.t('logs.delete')}" style="color: #f44336;">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M11 2H9c0-.55-.45-1-1-1H8c-.55 0-1 .45-1 1H5c-.55 0-1 .45-1 1v1h8V3c0-.55-.45-1-1-1zM4 5v9c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V5H4z"/>
               </svg>
@@ -3986,7 +3986,7 @@ class SSHClient {
       `).join('');
     } catch (error) {
       console.error('Failed to load logs:', error);
-      this.showNotification('加载日志失败', 'error');
+      this.showNotification('notify.loadLogsFailed', 'error');
     }
   }
 
@@ -3995,7 +3995,7 @@ class SSHClient {
       const result = await window.electronAPI.log.read(logPath);
       
       if (!result.success) {
-        this.showNotification('读取日志失败', 'error');
+        this.showNotification('notify.readLogFailed', 'error');
         return;
       }
 
@@ -4024,12 +4024,12 @@ class SSHClient {
       document.body.appendChild(viewer);
     } catch (error) {
       console.error('Failed to show log viewer:', error);
-      this.showNotification('显示日志失败', 'error');
+      this.showNotification('notify.showLogFailed', 'error');
     }
   }
 
   async deleteLog(logPath) {
-    if (!confirm('确定要删除这个日志文件吗？')) {
+    if (!confirm(this.t('logs.deleteConfirm'))) {
       return;
     }
 
@@ -4037,19 +4037,19 @@ class SSHClient {
       const result = await window.electronAPI.log.delete(logPath);
       
       if (result.success) {
-        this.showNotification('日志已删除', 'success');
+        this.showNotification('notify.logDeleted', 'success');
         await this.loadLogs();
       } else {
-        this.showNotification('删除日志失败: ' + result.error, 'error');
+        this.showNotification(this.t('notify.deleteLogFailed') + ': ' + result.error, 'error');
       }
     } catch (error) {
       console.error('Failed to delete log:', error);
-      this.showNotification('删除日志失败', 'error');
+      this.showNotification('notify.deleteLogFailed', 'error');
     }
   }
 
   async clearAllLogs() {
-    if (!confirm('确定要清除所有日志文件吗？此操作不可恢复！')) {
+    if (!confirm(this.t('logs.clearAllConfirm'))) {
       return;
     }
 
@@ -4057,14 +4057,14 @@ class SSHClient {
       const result = await window.electronAPI.log.clearAll();
       
       if (result.success) {
-        this.showNotification('所有日志已清除', 'success');
+        this.showNotification('notify.allLogsCleared', 'success');
         await this.loadLogs();
       } else {
-        this.showNotification('清除日志失败: ' + result.error, 'error');
+        this.showNotification(this.t('notify.clearLogsFailed') + ': ' + result.error, 'error');
       }
     } catch (error) {
       console.error('Failed to clear logs:', error);
-      this.showNotification('清除日志失败', 'error');
+      this.showNotification('notify.clearLogsFailed', 'error');
     }
   }
 
@@ -4073,15 +4073,15 @@ class SSHClient {
       const result = await window.electronAPI.log.export(logPath);
       
       if (result.success) {
-        this.showNotification('日志已导出', 'success');
+        this.showNotification('notify.logExported', 'success');
       } else if (result.cancelled) {
         // 用户取消了，不显示错误
       } else {
-        this.showNotification('导出日志失败: ' + result.error, 'error');
+        this.showNotification(this.t('notify.exportLogFailed') + ': ' + result.error, 'error');
       }
     } catch (error) {
       console.error('Failed to export log:', error);
-      this.showNotification('导出日志失败', 'error');
+      this.showNotification('notify.exportLogFailed', 'error');
     }
   }
 
@@ -4090,7 +4090,7 @@ class SSHClient {
       await window.electronAPI.log.openDir();
     } catch (error) {
       console.error('Failed to open log directory:', error);
-      this.showNotification('打开日志目录失败', 'error');
+      this.showNotification('notify.openLogDirFailed', 'error');
     }
   }
 
@@ -4104,7 +4104,7 @@ class SSHClient {
 
   splitTerminal(layout = 'horizontal') {
     if (!this.activeSessionId || this.activeSessionId.startsWith('sftp-')) {
-      this.showNotification('请先连接一个 SSH 会话', 'error');
+      this.showNotification('notify.connectSessionFirst', 'error');
       return;
     }
 
@@ -4112,7 +4112,7 @@ class SSHClient {
     if (this.splitSessions.has(this.activeSessionId)) {
       const splitData = this.splitSessions.get(this.activeSessionId);
       if (splitData.panes.length >= 4) {
-        this.showNotification('最多支持 4 个分屏', 'info');
+        this.showNotification('notify.maxSplitReached', 'info');
         return;
       }
       // 如果已经有分屏，继续添加（保持当前布局或升级为网格）
@@ -4146,7 +4146,7 @@ class SSHClient {
     
     const dialog = document.getElementById('splitSessionDialog');
     const title = document.getElementById('splitSessionDialogTitle');
-    title.textContent = `选择分屏会话 (${layout === 'horizontal' ? '水平' : '垂直'})`;
+    title.textContent = `${this.t('split.selectSession')} (${layout === 'horizontal' ? this.t('connect.titleSplitHorizontal').split('(')[1].replace(')', '') : this.t('connect.titleSplitVertical').split('(')[1].replace(')', '')})`;
     
     // 重置对话框状态
     document.getElementById('savedSessionsList').style.display = 'none';
@@ -4164,8 +4164,8 @@ class SSHClient {
     
     // 修改对话框标题
     const layout = this.pendingSplitLayout;
-    document.querySelector('#connectDialog h3').textContent = `新建分屏 (${layout === 'horizontal' ? '水平' : '垂直'})`;
-    document.getElementById('connectSubmitBtn').textContent = '连接并分屏';
+    document.querySelector('#connectDialog h3').textContent = layout === 'horizontal' ? this.t('connect.titleSplitHorizontal') : this.t('connect.titleSplitVertical');
+    document.getElementById('connectSubmitBtn').textContent = this.t('connect.btnConnectAndSplit');
     document.getElementById('saveSession').parentElement.style.display = 'none';
   }
 
@@ -4224,7 +4224,7 @@ class SSHClient {
   async connectSplitWithSavedSession(sessionId) {
     const session = this.savedSessions.find(s => s.id === sessionId);
     if (!session) {
-      this.showNotification('会话不存在', 'error');
+      this.showNotification('notify.sessionNotFound', 'error');
       return;
     }
 
@@ -4241,7 +4241,7 @@ class SSHClient {
     const result = await this.createSplitPane(this.activeSessionId, layout, config);
 
     if (result) {
-      this.showNotification('分屏创建成功', 'success');
+      this.showNotification('notify.splitCreatedSuccess', 'success');
     }
   }
 
@@ -4253,7 +4253,7 @@ class SSHClient {
       const result = await window.electronAPI.ssh.connect(config);
       
       if (!result.success) {
-        this.showNotification('连接失败: ' + result.error, 'error');
+        this.showNotification(this.t('notify.connectFailed') + ': ' + result.error, 'error');
         return null;
       }
 
@@ -4404,7 +4404,7 @@ class SSHClient {
       return { paneId, sshSessionId };
     } catch (error) {
       console.error('Failed to create split pane:', error);
-      this.showNotification('创建分屏失败: ' + error.message, 'error');
+      this.showNotification(this.t('notify.createSplitFailed') + ': ' + error.message, 'error');
       return null;
     }
   }
@@ -4478,7 +4478,7 @@ class SSHClient {
       const closeBtn = document.createElement('button');
       closeBtn.className = 'split-pane-close';
       closeBtn.innerHTML = '✕';
-      closeBtn.title = '关闭此面板';
+      closeBtn.title = this.t('sftp.closePaneTitle');
       closeBtn.onclick = () => this.closeSplitPane(sessionId, pane.paneId);
       
       header.appendChild(title);
@@ -4652,7 +4652,7 @@ class SSHClient {
       }, 100);
     }
 
-    this.showNotification('已关闭分屏', 'success');
+    this.showNotification('notify.splitClosed', 'success');
   }
 
   // ========== 同步输入功能 ==========
