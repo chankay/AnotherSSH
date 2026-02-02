@@ -1104,20 +1104,31 @@ class SSHClient {
       this.handleTerminalInput(sessionId, data);
     });
 
-    // 添加自定义键盘事件处理器，确保粘贴和复制正常工作
+    // 添加自定义键盘事件处理器，处理粘贴和复制
     terminal.attachCustomKeyEventHandler((event) => {
-      // Ctrl+V / Cmd+V 粘贴：让 xterm.js 处理
-      if ((event.ctrlKey || event.metaKey) && event.key === 'v') {
-        return true; // 让 xterm.js 处理粘贴
+      // Ctrl+V / Cmd+V 粘贴
+      if ((event.ctrlKey || event.metaKey) && event.key === 'v' && event.type === 'keydown') {
+        event.preventDefault();
+        // 从剪贴板读取并粘贴
+        navigator.clipboard.readText().then(text => {
+          terminal.paste(text);
+        }).catch(err => {
+          console.error('Failed to read clipboard:', err);
+        });
+        return false; // 阻止默认行为
       }
       
-      // Ctrl+C / Cmd+C：如果有选中文本则复制，否则发送中断信号
-      if ((event.ctrlKey || event.metaKey) && event.key === 'c') {
+      // Ctrl+C / Cmd+C：如果有选中文本则复制
+      if ((event.ctrlKey || event.metaKey) && event.key === 'c' && event.type === 'keydown') {
         if (terminal.hasSelection()) {
-          return true; // 有选中文本，让 xterm.js 处理复制
+          event.preventDefault();
+          const selection = terminal.getSelection();
+          navigator.clipboard.writeText(selection).catch(err => {
+            console.error('Failed to write clipboard:', err);
+          });
+          return false; // 阻止默认行为
         }
         // 没有选中文本，让终端处理（发送 Ctrl+C）
-        return true;
       }
       
       // 其他按键正常处理
@@ -4276,20 +4287,31 @@ class SSHClient {
         this.handleTerminalInput(sshSessionId, data);
       });
 
-      // 添加自定义键盘事件处理器，确保粘贴和复制正常工作
+      // 添加自定义键盘事件处理器，处理粘贴和复制
       terminal.attachCustomKeyEventHandler((event) => {
-        // Ctrl+V / Cmd+V 粘贴：让 xterm.js 处理
-        if ((event.ctrlKey || event.metaKey) && event.key === 'v') {
-          return true; // 让 xterm.js 处理粘贴
+        // Ctrl+V / Cmd+V 粘贴
+        if ((event.ctrlKey || event.metaKey) && event.key === 'v' && event.type === 'keydown') {
+          event.preventDefault();
+          // 从剪贴板读取并粘贴
+          navigator.clipboard.readText().then(text => {
+            terminal.paste(text);
+          }).catch(err => {
+            console.error('Failed to read clipboard:', err);
+          });
+          return false; // 阻止默认行为
         }
         
-        // Ctrl+C / Cmd+C：如果有选中文本则复制，否则发送中断信号
-        if ((event.ctrlKey || event.metaKey) && event.key === 'c') {
+        // Ctrl+C / Cmd+C：如果有选中文本则复制
+        if ((event.ctrlKey || event.metaKey) && event.key === 'c' && event.type === 'keydown') {
           if (terminal.hasSelection()) {
-            return true; // 有选中文本，让 xterm.js 处理复制
+            event.preventDefault();
+            const selection = terminal.getSelection();
+            navigator.clipboard.writeText(selection).catch(err => {
+              console.error('Failed to write clipboard:', err);
+            });
+            return false; // 阻止默认行为
           }
           // 没有选中文本，让终端处理（发送 Ctrl+C）
-          return true;
         }
         
         // 其他按键正常处理
