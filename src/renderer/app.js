@@ -2161,12 +2161,12 @@ class SSHClient {
           if (result.success) {
             // 重新加载会话
             await this.loadSessions();
-            this.showNotification(`成功导入 ${result.count} 个会话`, 'success');
+            this.showNotification(this.t('notify.importSuccess').replace('{count}', result.count), 'success');
           } else if (result.error !== 'User canceled') {
-            this.showNotification('导入失败: ' + result.error, 'error');
+            this.showNotification(this.t('notify.importFailed') + ': ' + result.error, 'error');
           }
         } catch (error) {
-          this.showNotification('导入错误: ' + error.message, 'error');
+          this.showNotification(this.t('notify.importError') + ': ' + error.message, 'error');
         }
       }
     );
@@ -2226,7 +2226,7 @@ class SSHClient {
   // SFTP 批量下载选中文件
   async sftpDownloadSelected() {
     if (this.selectedFiles.size === 0) {
-      this.showNotification('请先选择要下载的文件', 'info');
+      this.showNotification('notify.selectFilesToDownload', 'info');
       return;
     }
 
@@ -2292,18 +2292,18 @@ class SSHClient {
   async connectSavedSession(config) {
     try {
       // 显示连接状态
-      this.showNotification('正在连接...', 'info');
+      this.showNotification('notify.connecting', 'info');
       
       const result = await window.electronAPI.ssh.connect(config);
       
       if (result.success) {
         this.createTerminal(result.sessionId, config);
-        this.showNotification('连接成功', 'success');
+        this.showNotification('notify.connectSuccess', 'success');
       } else {
-        this.showNotification('连接失败: ' + result.error, 'error');
+        this.showNotification(this.t('notify.connectFailed') + ': ' + result.error, 'error');
       }
     } catch (error) {
-      this.showNotification('连接错误: ' + error.message, 'error');
+      this.showNotification(this.t('notify.connectError') + ': ' + error.message, 'error');
     }
   }
 
@@ -2770,11 +2770,11 @@ class SSHClient {
     const result = await window.electronAPI.sftp.download(session.sessionId, remotePath);
     
     if (result.success) {
-      this.showNotification('下载完成', 'success');
+      this.showNotification('notify.downloadComplete', 'success');
     } else if (result.cancelled) {
       // 用户取消，不显示错误
     } else if (result.error !== 'User canceled') {
-      this.showNotification('下载失败: ' + result.error, 'error');
+      this.showNotification(this.t('notify.downloadFailed') + ': ' + result.error, 'error');
     }
   }
 
@@ -2792,12 +2792,12 @@ class SSHClient {
     const result = await window.electronAPI.sftp.upload(session.sessionId, remotePath);
     
     if (result.success) {
-      this.showNotification('上传完成', 'success');
+      this.showNotification('notify.uploadComplete', 'success');
       this.sftpRefresh();
     } else if (result.cancelled) {
       // 用户取消，不显示错误
     } else if (result.error !== 'User canceled') {
-      this.showNotification('上传失败: ' + result.error, 'error');
+      this.showNotification(this.t('notify.uploadFailed') + ': ' + result.error, 'error');
     }
   }
 
@@ -3266,10 +3266,10 @@ class SSHClient {
         if (result.success) {
           // 清除提示标记，下次启动时会再次提示设置主密码
           await window.electronAPI.masterPassword.clearPrompted();
-          this.showNotification('主密码已移除', 'success');
+          this.showNotification('notify.masterPasswordRemoved', 'success');
           this.updateMasterPasswordStatus();
         } else {
-          this.showNotification('移除失败: ' + result.error, 'error');
+          this.showNotification(this.t('notify.removeFailed') + ': ' + result.error, 'error');
         }
       }
       
@@ -3419,7 +3419,7 @@ class SSHClient {
     // 保存 WebDAV 配置
     this.saveWebDAVConfig();
     
-    this.showNotification('设置已保存', 'success');
+    this.showNotification('notify.settingsSaved', 'success');
   }
 
   async saveWebDAVConfig() {
@@ -3656,7 +3656,7 @@ class SSHClient {
           const time = new Date(status.lastSyncTime);
           lastSyncTime.textContent = time.toLocaleString('zh-CN');
         } else {
-          lastSyncTime.textContent = '从未';
+          lastSyncTime.textContent = this.t('webdav.lastSyncNever');
         }
       }
     } catch (error) {
@@ -3671,13 +3671,13 @@ class SSHClient {
     const remotePath = document.getElementById('webdavRemotePath').value.trim() || 'anotherssh-config.json';
 
     if (!url || !username || !password) {
-      this.showNotification('请填写完整的 WebDAV 配置', 'error');
+      this.showNotification('notify.webdavConfigIncomplete', 'error');
       return;
     }
 
     const testBtn = document.getElementById('testWebdavBtn');
     testBtn.disabled = true;
-    testBtn.textContent = '测试中...';
+    testBtn.textContent = this.t('webdav.testing');
 
     try {
       const result = await window.electronAPI.webdav.testConnection({
@@ -3687,7 +3687,7 @@ class SSHClient {
       });
 
       if (result.success) {
-        this.showNotification('✅ 连接成功！', 'success');
+        this.showNotification('notify.connectionSuccess', 'success');
         
         // 保存配置并初始化客户端
         const config = {
@@ -3713,14 +3713,14 @@ class SSHClient {
       this.showNotification(`❌ 连接失败: ${error.message}`, 'error');
     } finally {
       testBtn.disabled = false;
-      testBtn.textContent = '测试连接';
+      testBtn.textContent = this.t('webdav.testConnection');
     }
   }
 
   async syncNow() {
     const syncBtn = document.getElementById('syncNowBtn');
     syncBtn.disabled = true;
-    syncBtn.textContent = '同步中...';
+    syncBtn.textContent = this.t('webdav.syncing');
 
     try {
       // 确保使用最新的配置重新初始化客户端
@@ -3730,9 +3730,9 @@ class SSHClient {
       const remotePath = document.getElementById('webdavRemotePath').value.trim() || 'anotherssh-config.json';
       
       if (!url || !username || !password) {
-        this.showNotification('请先配置 WebDAV 连接', 'error');
+        this.showNotification('notify.webdavNotConfigured', 'error');
         syncBtn.disabled = false;
-        syncBtn.textContent = '立即同步';
+        syncBtn.textContent = this.t('webdav.syncNow');
         return;
       }
 
@@ -3759,9 +3759,9 @@ class SSHClient {
       // 获取加密后的会话数据用于同步
       const encryptedResult = await window.electronAPI.session.loadEncrypted();
       if (!encryptedResult.success) {
-        this.showNotification('❌ 无法读取会话数据', 'error');
+        this.showNotification('notify.cannotReadSessionData', 'error');
         syncBtn.disabled = false;
-        syncBtn.textContent = '立即同步';
+        syncBtn.textContent = this.t('webdav.syncNow');
         return;
       }
       
@@ -3867,7 +3867,7 @@ class SSHClient {
       this.showNotification(`❌ 同步失败: ${error.message}`, 'error');
     } finally {
       syncBtn.disabled = false;
-      syncBtn.textContent = '立即同步';
+      syncBtn.textContent = this.t('webdav.syncNow');
     }
   }
 
@@ -4681,19 +4681,19 @@ class SSHClient {
 
     if (this.syncInputMode === 'OFF') {
       btn.classList.remove('active');
-      text.textContent = '同步: 关';
-      btn.title = '同步输入模式: 关闭';
+      text.textContent = this.t('syncInput.off');
+      btn.title = this.t('syncInput.titleOff');
     } else if (this.syncInputMode === 'ALL') {
       btn.classList.add('active');
       const count = this.terminals.size;
-      text.textContent = `同步: 全部 (${count})`;
-      btn.title = `同步输入到所有 ${count} 个会话`;
+      text.textContent = `${this.t('syncInput.all')} (${count})`;
+      btn.title = `${this.t('syncInput.titleAll')} (${count})`;
     } else if (this.syncInputMode === 'SPLIT') {
       btn.classList.add('active');
       const splitData = this.splitSessions.get(this.activeSessionId);
       const count = splitData ? splitData.panes.length : 0;
-      text.textContent = `同步: 分屏 (${count})`;
-      btn.title = `同步输入到当前分屏的 ${count} 个面板`;
+      text.textContent = `${this.t('syncInput.split')} (${count})`;
+      btn.title = `${this.t('syncInput.titleSplit')} (${count})`;
     }
   }
 
@@ -4823,13 +4823,13 @@ class SSHClient {
       // 注意：xterm.js 的 SearchAddon 不直接返回匹配数量
       // 这里简化处理，只显示是否找到
       if (found) {
-        document.getElementById('searchCount').textContent = '已找到';
+        document.getElementById('searchCount').textContent = this.t('search.found');
       } else {
-        document.getElementById('searchCount').textContent = '无匹配';
+        document.getElementById('searchCount').textContent = this.t('search.noMatch');
       }
     } catch (error) {
       console.error('Search error:', error);
-      document.getElementById('searchCount').textContent = '错误';
+      document.getElementById('searchCount').textContent = this.t('search.error');
     }
   }
 
