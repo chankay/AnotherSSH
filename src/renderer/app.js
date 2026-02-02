@@ -615,21 +615,21 @@ class SSHClient {
     form.reset();
     
     if (mode === 'set') {
-      title.textContent = '设置主密码（可选）';
+      title.textContent = this.t('masterPassword.titleSetOptional');
       confirmGroup.style.display = 'block';
-      hint.textContent = '主密码用于保护您的会话数据，请妥善保管。您也可以选择暂不设置。';
+      hint.textContent = this.t('masterPassword.hintSetOptional');
       cancelBtn.style.display = 'none';
       skipBtn.style.display = 'inline-block';
     } else if (mode === 'verify') {
-      title.textContent = '输入主密码';
+      title.textContent = this.t('masterPassword.titleVerify');
       confirmGroup.style.display = 'none';
-      hint.textContent = '请输入主密码以解锁应用。';
+      hint.textContent = this.t('masterPassword.hintVerify');
       cancelBtn.style.display = 'none';
       skipBtn.style.display = 'none';
     } else if (mode === 'change') {
-      title.textContent = '修改主密码';
+      title.textContent = this.t('masterPassword.titleChange');
       confirmGroup.style.display = 'block';
-      hint.textContent = '请输入新的主密码。';
+      hint.textContent = this.t('masterPassword.hintChange');
       cancelBtn.style.display = 'inline-block';
       skipBtn.style.display = 'none';
     }
@@ -650,7 +650,7 @@ class SSHClient {
     const confirmPassword = document.getElementById('masterPasswordConfirm').value;
     const title = document.getElementById('masterPasswordTitle').textContent;
     
-    if (title.includes('设置主密码')) {
+    if (title.includes(this.t('masterPassword.titleSetOptional').substring(0, 6))) {
       // 设置主密码
       if (!password) {
         this.showNotification('notify.passwordRequired', 'error');
@@ -677,7 +677,7 @@ class SSHClient {
       } else {
         this.showNotification('notify.operationFailed', 'error');
       }
-    } else if (title === '输入主密码') {
+    } else if (title === this.t('masterPassword.titleVerify')) {
       // 验证主密码
       if (!password) {
         this.showNotification('notify.passwordRequired', 'error');
@@ -711,12 +711,12 @@ class SSHClient {
       const changeGroup = document.getElementById('changeMasterPasswordGroup');
       
       if (result.hasPassword) {
-        statusText.textContent = '已设置';
+        statusText.textContent = this.t('settings.masterPasswordSet');
         statusText.style.color = '#4caf50';
         setGroup.style.display = 'none';
         changeGroup.style.display = 'block';
       } else {
-        statusText.textContent = '未设置';
+        statusText.textContent = this.t('settings.masterPasswordNotSet');
         statusText.style.color = '#888';
         setGroup.style.display = 'block';
         changeGroup.style.display = 'none';
@@ -772,18 +772,18 @@ class SSHClient {
       oldPasswordGroup.className = 'form-group';
       oldPasswordGroup.id = 'oldPasswordGroup';
       oldPasswordGroup.innerHTML = `
-        <label for="oldPassword">旧密码</label>
-        <input type="password" id="oldPassword" placeholder="请输入旧密码" />
+        <label for="oldPassword" data-i18n="masterPassword.oldPassword">${this.t('masterPassword.oldPassword')}</label>
+        <input type="password" id="oldPassword" data-i18n-placeholder="masterPassword.oldPasswordPlaceholder" placeholder="${this.t('masterPassword.oldPasswordPlaceholder')}" />
       `;
       document.getElementById('masterPasswordGroup').after(oldPasswordGroup);
     }
     
-    title.textContent = '修改主密码';
+    title.textContent = this.t('masterPassword.titleChange');
     oldPasswordGroup.style.display = 'block';
-    document.getElementById('masterPasswordGroup').querySelector('label').textContent = '新密码';
-    document.getElementById('masterPassword').placeholder = '请输入新密码';
+    document.getElementById('masterPasswordGroup').querySelector('label').textContent = this.t('masterPassword.newPassword');
+    document.getElementById('masterPassword').placeholder = this.t('masterPassword.newPasswordPlaceholder');
     confirmGroup.style.display = 'block';
-    hint.textContent = '请输入旧密码和新密码。';
+    hint.textContent = this.t('masterPassword.hintChange');
     skipBtn.style.display = 'none';
     cancelBtn.style.display = 'inline-block';
     
@@ -800,8 +800,8 @@ class SSHClient {
     // 关闭时恢复
     const closeHandler = () => {
       oldPasswordGroup.style.display = 'none';
-      document.getElementById('masterPasswordGroup').querySelector('label').textContent = '主密码';
-      document.getElementById('masterPassword').placeholder = '请输入主密码';
+      document.getElementById('masterPasswordGroup').querySelector('label').textContent = this.t('masterPassword.password');
+      document.getElementById('masterPassword').placeholder = this.t('masterPassword.passwordPlaceholder');
       form.onsubmit = oldHandler;
       // 恢复设置对话框
       document.getElementById('settingsDialog').style.display = 'flex';
@@ -844,8 +844,8 @@ class SSHClient {
       this.hideMasterPasswordDialog();
       document.getElementById('oldPasswordGroup').style.display = 'none';
       // 恢复标签和占位符
-      document.getElementById('masterPasswordGroup').querySelector('label').textContent = '主密码';
-      document.getElementById('masterPassword').placeholder = '请输入主密码';
+      document.getElementById('masterPasswordGroup').querySelector('label').textContent = this.t('masterPassword.password');
+      document.getElementById('masterPassword').placeholder = this.t('masterPassword.passwordPlaceholder');
       // 恢复设置对话框
       document.getElementById('settingsDialog').style.display = 'flex';
       this.updateMasterPasswordStatus();
@@ -857,8 +857,8 @@ class SSHClient {
   showConnectDialog() {
     // 重置编辑模式
     this.editingSessionId = null;
-    document.querySelector('#connectDialog h3').textContent = '新建 SSH 连接';
-    document.getElementById('connectSubmitBtn').textContent = '连接';
+    document.querySelector('#connectDialog h3').textContent = this.t('connect.titleNew');
+    document.getElementById('connectSubmitBtn').textContent = this.t('connect.btnConnect');
     document.getElementById('saveOnlyBtn').style.display = 'inline-block';
     document.getElementById('saveSession').parentElement.style.display = 'block';
     
@@ -1201,9 +1201,9 @@ class SSHClient {
     }
     
     tab.innerHTML = `
-      <span class="tab-status connecting" title="连接中"></span>
+      <span class="tab-status connecting" data-i18n-title="status.connecting" title="${this.t('status.connecting')}"></span>
       <span class="tab-name">${config.name || config.username + '@' + config.host}</span>
-      <button class="tab-sftp-btn" data-session="${sessionId}" title="打开 SFTP">📁</button>
+      <button class="tab-sftp-btn" data-session="${sessionId}" data-i18n-title="sftp.openTitle" title="${this.t('sftp.openTitle')}">📁</button>
       <span class="tab-close" data-session="${sessionId}">✕</span>
     `;
 
@@ -1314,7 +1314,7 @@ class SSHClient {
     const terminalData = this.terminals.get(sessionId);
     if (!terminalData) {
       // 没有活动会话
-      document.getElementById('statusConnectionText').textContent = '未连接';
+      document.getElementById('statusConnectionText').textContent = this.t('status.notConnected');
       document.querySelector('#statusConnection .status-icon').className = 'status-icon disconnected';
       document.getElementById('statusSessionText').textContent = '';
       document.getElementById('statusInfoText').textContent = '';
@@ -1327,13 +1327,13 @@ class SSHClient {
     
     // 更新连接状态
     if (statusSpan?.classList.contains('connected')) {
-      document.getElementById('statusConnectionText').textContent = '已连接';
+      document.getElementById('statusConnectionText').textContent = this.t('status.connected');
       document.querySelector('#statusConnection .status-icon').className = 'status-icon connected';
     } else if (statusSpan?.classList.contains('connecting')) {
-      document.getElementById('statusConnectionText').textContent = '连接中';
+      document.getElementById('statusConnectionText').textContent = this.t('status.connecting');
       document.querySelector('#statusConnection .status-icon').className = 'status-icon connecting';
     } else {
-      document.getElementById('statusConnectionText').textContent = '已断开';
+      document.getElementById('statusConnectionText').textContent = this.t('status.disconnected');
       document.querySelector('#statusConnection .status-icon').className = 'status-icon disconnected';
     }
 

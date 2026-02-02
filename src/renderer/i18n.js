@@ -309,7 +309,79 @@ const translations = {
     'notify.splitCreatedSuccess': '分屏创建成功',
     'notify.createSplitFailed': '创建分屏失败',
     
-    // 确认对话框
+    // 主密码对话框动态文本
+    'masterPassword.titleSetOptional': '设置主密码（可选）',
+    'masterPassword.hintSetOptional': '主密码用于保护您的会话数据，请妥善保管。您也可以选择暂不设置。',
+    
+    // 连接对话框动态文本
+    'connect.titleNew': '新建 SSH 连接',
+    'connect.titleEdit': '编辑 SSH 连接',
+    'connect.titleClone': '克隆 SSH 连接',
+    'connect.titleSplit': '新建分屏',
+    'connect.titleSplitHorizontal': '新建分屏 (水平)',
+    'connect.titleSplitVertical': '新建分屏 (垂直)',
+    'connect.btnConnect': '连接',
+    'connect.btnSaveAndConnect': '保存并连接',
+    'connect.btnConnectAndSplit': '连接并分屏',
+    
+    // 状态文本
+    'status.notConnected': '未连接',
+    'status.connected': '已连接',
+    'status.connecting': '连接中',
+    'status.disconnected': '已断开',
+    
+    // 分组相关
+    'group.default': '默认分组',
+    'group.empty': '暂无会话',
+    'group.rename': '重命名',
+    'group.delete': '删除',
+    'group.newTitle': '新建分组',
+    'group.newPrompt': '请输入分组名称:',
+    'group.renameTitle': '重命名分组',
+    'group.renamePrompt': '请输入新的分组名称:',
+    'group.deleteTitle': '删除分组',
+    'group.deleteMessage': '分组 "{name}" 中有 {count} 个会话。\n\n点击"确定"将会话移至默认分组',
+    'group.alreadyExists': '分组已存在',
+    'group.nameExists': '分组名称已存在',
+    
+    // 会话操作
+    'session.deleteTitle': '删除会话',
+    'session.deleteMessage': '确定删除会话 "{name}" 吗？',
+    'session.exportSuccess': '配置已导出到:\n{path}',
+    'session.exportFailed': '导出失败',
+    'session.exportError': '导出错误',
+    'session.importTitle': '导入配置',
+    'session.importMessage': '导入配置将会覆盖当前所有会话和分组，是否继续？',
+    
+    // SFTP相关
+    'sftp.openTitle': '打开 SFTP',
+    
+    // 同步输入
+    'syncInput.off': '同步: 关',
+    'syncInput.all': '同步: 所有',
+    'syncInput.split': '同步: 分屏',
+    'syncInput.titleOff': '同步输入模式: 关闭',
+    'syncInput.titleAll': '同步输入模式: 所有会话',
+    'syncInput.titleSplit': '同步输入模式: 当前分屏',
+    
+    // 搜索结果
+    'search.found': '已找到',
+    'search.noMatch': '无匹配',
+    'search.error': '错误',
+    
+    // WebDAV同步
+    'webdav.testing': '测试中...',
+    'webdav.testConnection': '测试连接',
+    'webdav.syncing': '同步中...',
+    'webdav.syncNow': '立即同步',
+    'webdav.lastSyncNever': '从未',
+    
+    // 连接状态
+    'connection.statusConnecting': '连接中',
+    'connection.failed': '连接失败',
+    
+    // 其他
+    'common.version': '版本',
     'confirm.deleteSession': '确定要删除此会话吗？',
     'confirm.deleteGroup': '确定要删除此分组吗？分组内的会话将移至默认分组。',
     'confirm.resetMasterPassword': '重置主密码将清除所有加密的会话数据，确定要继续吗？',
@@ -629,7 +701,79 @@ const translations = {
     'notify.splitCreatedSuccess': 'Split created successfully',
     'notify.createSplitFailed': 'Failed to create split',
     
-    // Confirm Dialog
+    // Master Password Dialog Dynamic Text
+    'masterPassword.titleSetOptional': 'Set Master Password (Optional)',
+    'masterPassword.hintSetOptional': 'Master password protects your session data. Please keep it safe. You can also skip this step.',
+    
+    // Connect Dialog Dynamic Text
+    'connect.titleNew': 'New SSH Connection',
+    'connect.titleEdit': 'Edit SSH Connection',
+    'connect.titleClone': 'Clone SSH Connection',
+    'connect.titleSplit': 'New Split',
+    'connect.titleSplitHorizontal': 'New Split (Horizontal)',
+    'connect.titleSplitVertical': 'New Split (Vertical)',
+    'connect.btnConnect': 'Connect',
+    'connect.btnSaveAndConnect': 'Save & Connect',
+    'connect.btnConnectAndSplit': 'Connect & Split',
+    
+    // Status Text
+    'status.notConnected': 'Not Connected',
+    'status.connected': 'Connected',
+    'status.connecting': 'Connecting',
+    'status.disconnected': 'Disconnected',
+    
+    // Group Related
+    'group.default': 'Default Group',
+    'group.empty': 'No sessions',
+    'group.rename': 'Rename',
+    'group.delete': 'Delete',
+    'group.newTitle': 'New Group',
+    'group.newPrompt': 'Enter group name:',
+    'group.renameTitle': 'Rename Group',
+    'group.renamePrompt': 'Enter new group name:',
+    'group.deleteTitle': 'Delete Group',
+    'group.deleteMessage': 'Group "{name}" has {count} sessions.\n\nClick "OK" to move sessions to default group',
+    'group.alreadyExists': 'Group already exists',
+    'group.nameExists': 'Group name already exists',
+    
+    // Session Operations
+    'session.deleteTitle': 'Delete Session',
+    'session.deleteMessage': 'Are you sure you want to delete session "{name}"?',
+    'session.exportSuccess': 'Config exported to:\n{path}',
+    'session.exportFailed': 'Export failed',
+    'session.exportError': 'Export error',
+    'session.importTitle': 'Import Config',
+    'session.importMessage': 'Importing config will overwrite all current sessions and groups. Continue?',
+    
+    // SFTP Related
+    'sftp.openTitle': 'Open SFTP',
+    
+    // Sync Input
+    'syncInput.off': 'Sync: Off',
+    'syncInput.all': 'Sync: All',
+    'syncInput.split': 'Sync: Split',
+    'syncInput.titleOff': 'Sync Input Mode: Off',
+    'syncInput.titleAll': 'Sync Input Mode: All Sessions',
+    'syncInput.titleSplit': 'Sync Input Mode: Current Split',
+    
+    // Search Results
+    'search.found': 'Found',
+    'search.noMatch': 'No Match',
+    'search.error': 'Error',
+    
+    // WebDAV Sync
+    'webdav.testing': 'Testing...',
+    'webdav.testConnection': 'Test Connection',
+    'webdav.syncing': 'Syncing...',
+    'webdav.syncNow': 'Sync Now',
+    'webdav.lastSyncNever': 'Never',
+    
+    // Connection Status
+    'connection.statusConnecting': 'Connecting',
+    'connection.failed': 'Connection failed',
+    
+    // Others
+    'common.version': 'Version',
     'confirm.deleteSession': 'Are you sure you want to delete this session?',
     'confirm.deleteGroup': 'Are you sure you want to delete this group? Sessions will be moved to default group.',
     'confirm.resetMasterPassword': 'Resetting master password will clear all encrypted session data. Continue?',
