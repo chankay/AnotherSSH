@@ -1,6 +1,6 @@
 {
   "name": "anotherssh",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "A modern cross-platform SSH client - Another way to connect",
   "main": "src/main/main.js",
   "scripts": {
