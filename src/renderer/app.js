@@ -298,7 +298,7 @@ class SSHClient {
     const result = await window.electronAPI.sftp.cancelTransfer(this.currentTransferId);
     
     if (result.success) {
-      this.showNotification('传输已取消', 'info');
+      this.showNotification('notify.transferCancelled', 'info');
       const progressBar = document.getElementById('progressBar');
       if (progressBar) {
         progressBar.remove();
@@ -360,7 +360,7 @@ class SSHClient {
         }
       } catch (error) {
         console.error('Failed to browse key file:', error);
-        this.showNotification('选择文件失败', 'error');
+        this.showNotification('notify.fileSelectFailed', 'error');
       }
     });
 

@@ -28,7 +28,7 @@
           <button id="settingsBtn" class="icon-btn" data-i18n-title="sidebar.settings" title="设置">⚙️</button>
         </div>
         <div class="search-box">
-          <input type="text" id="sessionSearch" placeholder="搜索会话..." />
+          <input type="text" id="sessionSearch" data-i18n-placeholder="sidebar.searchPlaceholder" placeholder="搜索会话..." />
         </div>
         <div class="header-actions">
           <button id="newSessionBtn" class="btn-primary" data-i18n="sidebar.newSession">新建连接</button>
@@ -55,33 +55,33 @@
       </div>
       <div class="content-area">
         <div class="terminal-toolbar" id="terminalToolbar" style="display: none;">
-          <button class="toolbar-btn" id="splitHorizontalBtn" title="水平分屏 (Ctrl+Shift+D)">
+          <button class="toolbar-btn" id="splitHorizontalBtn" data-i18n-title="terminal.splitHorizontal" title="水平分屏 (Ctrl+Shift+D)">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <rect x="1" y="1" width="14" height="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
               <rect x="1" y="9" width="14" height="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
             </svg>
           </button>
-          <button class="toolbar-btn" id="splitVerticalBtn" title="垂直分屏 (Ctrl+Shift+E)">
+          <button class="toolbar-btn" id="splitVerticalBtn" data-i18n-title="terminal.splitVertical" title="垂直分屏 (Ctrl+Shift+E)">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <rect x="1" y="1" width="6" height="14" fill="none" stroke="currentColor" stroke-width="1.5"/>
               <rect x="9" y="1" width="6" height="14" fill="none" stroke="currentColor" stroke-width="1.5"/>
             </svg>
           </button>
-          <button class="toolbar-btn" id="closeSplitBtn" title="关闭分屏" style="display: none;">
+          <button class="toolbar-btn" id="closeSplitBtn" data-i18n-title="terminal.closeSplit" title="关闭分屏" style="display: none;">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M8 6.6L13.3 1.3c.4-.4 1-.4 1.4 0 .4.4.4 1 0 1.4L9.4 8l5.3 5.3c.4.4.4 1 0 1.4-.4.4-1 .4-1.4 0L8 9.4l-5.3 5.3c-.4.4-1 .4-1.4 0-.4-.4-.4-1 0-1.4L6.6 8 1.3 2.7c-.4-.4-.4-1 0-1.4.4-.4 1-.4 1.4 0L8 6.6z"/>
             </svg>
           </button>
           <div class="toolbar-divider"></div>
-          <button class="toolbar-btn toolbar-btn-toggle" id="syncInputBtn" title="同步输入模式">
+          <button class="toolbar-btn toolbar-btn-toggle" id="syncInputBtn" data-i18n-title="terminal.syncInput" title="同步输入模式">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2zm0 1a5 5 0 1 1 0 10A5 5 0 0 1 8 3zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm0 1a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/>
               <path d="M2 8a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2A.5.5 0 0 1 2 8zm9.5 0a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5zM8 2a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 2zm0 9.5a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2a.5.5 0 0 1 .5-.5z"/>
             </svg>
-            <span id="syncInputText">同步: 关</span>
+            <span id="syncInputText" data-i18n="terminal.syncOff">同步: 关</span>
           </button>
           <div class="toolbar-divider"></div>
-          <button class="toolbar-btn" id="searchBtn" title="搜索终端内容 (Ctrl+F)">
+          <button class="toolbar-btn" id="searchBtn" data-i18n-title="terminal.search" title="搜索终端内容 (Ctrl+F)">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
             </svg>
@@ -94,24 +94,24 @@
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" class="search-icon">
               <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
             </svg>
-            <input type="text" id="searchInput" placeholder="搜索..." />
-            <button class="search-clear-btn" id="searchClearBtn" title="清除" style="display: none;">✕</button>
+            <input type="text" id="searchInput" data-i18n-placeholder="search.placeholder" placeholder="搜索..." />
+            <button class="search-clear-btn" id="searchClearBtn" data-i18n-title="common.clear" title="清除" style="display: none;">✕</button>
           </div>
           <div class="search-controls">
-            <button class="search-nav-btn" id="searchPrevBtn" title="上一个 (Shift+Enter)">
+            <button class="search-nav-btn" id="searchPrevBtn" data-i18n-title="search.previous" title="上一个 (Shift+Enter)">
               <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M8 12l-4-4h8z"/>
               </svg>
             </button>
-            <button class="search-nav-btn" id="searchNextBtn" title="下一个 (Enter)">
+            <button class="search-nav-btn" id="searchNextBtn" data-i18n-title="search.next" title="下一个 (Enter)">
               <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M8 4l4 4H4z"/>
               </svg>
             </button>
             <span class="search-count" id="searchCount">0/0</span>
-            <button class="search-option-btn" id="searchCaseSensitiveBtn" title="区分大小写">Aa</button>
-            <button class="search-option-btn" id="searchRegexBtn" title="正则表达式">.*</button>
-            <button class="search-close-btn" id="searchCloseBtn" title="关闭 (Esc)">✕</button>
+            <button class="search-option-btn" id="searchCaseSensitiveBtn" data-i18n-title="search.caseSensitive" title="区分大小写">Aa</button>
+            <button class="search-option-btn" id="searchRegexBtn" data-i18n-title="search.regex" title="正则表达式">.*</button>
+            <button class="search-close-btn" id="searchCloseBtn" data-i18n-title="search.close" title="关闭 (Esc)">✕</button>
           </div>
         </div>
         
@@ -156,13 +156,13 @@
         <div class="sftp-container" id="sftpContainer" style="display: none;">
           <!-- SFTP 文件管理器 -->
           <div class="sftp-toolbar">
-            <button id="sftpBackBtn" class="btn-secondary">返回上级</button>
-            <input type="text" id="sftpPath" class="path-input" readonly>
-            <button id="sftpRefreshBtn" class="btn-secondary">刷新</button>
-            <button id="sftpSelectAllBtn" class="btn-secondary">全选</button>
-            <button id="sftpUploadBtn" class="btn-primary">上传</button>
-            <button id="sftpDownloadBtn" class="btn-primary" disabled>下载选中</button>
-            <button id="sftpMkdirBtn" class="btn-secondary">新建文件夹</button>
+            <button id="sftpBackBtn" class="btn-secondary" data-i18n="sftp.back">返回上级</button>
+            <input type="text" id="sftpPath" class="path-input" readonly data-i18n-placeholder="sftp.currentPath">
+            <button id="sftpRefreshBtn" class="btn-secondary" data-i18n="sftp.refresh">刷新</button>
+            <button id="sftpSelectAllBtn" class="btn-secondary" data-i18n="sftp.selectAll">全选</button>
+            <button id="sftpUploadBtn" class="btn-primary" data-i18n="sftp.upload">上传</button>
+            <button id="sftpDownloadBtn" class="btn-primary" disabled data-i18n="sftp.download">下载选中</button>
+            <button id="sftpMkdirBtn" class="btn-secondary" data-i18n="sftp.mkdir">新建文件夹</button>
           </div>
           <div class="sftp-file-list" id="sftpFileList">
             <!-- 文件列表 -->
@@ -175,25 +175,25 @@
   <!-- 主密码对话框 -->
   <div id="masterPasswordDialog" class="dialog" style="display: none;">
     <div class="dialog-content dialog-small">
-      <h3 id="masterPasswordTitle">设置主密码</h3>
+      <h3 id="masterPasswordTitle" data-i18n="masterPassword.title">设置主密码</h3>
       <form id="masterPasswordForm">
         <div class="dialog-body">
           <div class="form-group" id="masterPasswordGroup">
-            <label for="masterPassword">主密码</label>
-            <input type="password" id="masterPassword" placeholder="请输入主密码" required />
+            <label for="masterPassword" data-i18n="masterPassword.password">主密码</label>
+            <input type="password" id="masterPassword" data-i18n-placeholder="masterPassword.passwordPlaceholder" placeholder="请输入主密码" required />
           </div>
           <div class="form-group" id="masterPasswordConfirmGroup" style="display: none;">
-            <label for="masterPasswordConfirm">确认密码</label>
-            <input type="password" id="masterPasswordConfirm" placeholder="请再次输入密码" />
+            <label for="masterPasswordConfirm" data-i18n="masterPassword.confirmPassword">确认密码</label>
+            <input type="password" id="masterPasswordConfirm" data-i18n-placeholder="masterPassword.confirmPasswordPlaceholder" placeholder="请再次输入密码" />
           </div>
           <div class="form-hint">
-            <p id="masterPasswordHint">主密码用于保护您的会话数据，请妥善保管。</p>
+            <p id="masterPasswordHint" data-i18n="masterPassword.hint">主密码用于保护您的会话数据，请妥善保管。</p>
           </div>
         </div>
         <div class="form-actions">
-          <button type="submit" class="btn-primary" id="masterPasswordSubmitBtn">确定</button>
-          <button type="button" class="btn-secondary" id="masterPasswordSkipBtn">暂不设置</button>
-          <button type="button" class="btn-secondary" id="masterPasswordCancelBtn" style="display: none;">取消</button>
+          <button type="submit" class="btn-primary" id="masterPasswordSubmitBtn" data-i18n="masterPassword.submit">确定</button>
+          <button type="button" class="btn-secondary" id="masterPasswordSkipBtn" data-i18n="masterPassword.skip">暂不设置</button>
+          <button type="button" class="btn-secondary" id="masterPasswordCancelBtn" data-i18n="masterPassword.cancel" style="display: none;">取消</button>
         </div>
       </form>
     </div>
@@ -202,53 +202,53 @@
   <!-- 连接对话框 -->
   <div id="connectDialog" class="dialog" style="display: none;">
     <div class="dialog-content">
-      <h3>新建 SSH 连接</h3>
+      <h3 data-i18n="connect.title">新建 SSH 连接</h3>
       <form id="connectForm">
         <div class="dialog-body">
           <div class="form-group">
-            <label>主机地址:</label>
-            <input type="text" id="host" required placeholder="192.168.1.1">
+            <label data-i18n="connect.host">主机地址:</label>
+            <input type="text" id="host" required data-i18n-placeholder="connect.hostPlaceholder" placeholder="192.168.1.1">
           </div>
           <div class="form-group">
-            <label>端口:</label>
+            <label data-i18n="connect.port">端口:</label>
             <input type="number" id="port" value="22" required>
           </div>
           <div class="form-group">
-            <label>用户名:</label>
-            <input type="text" id="username" required placeholder="root">
+            <label data-i18n="connect.username">用户名:</label>
+            <input type="text" id="username" required data-i18n-placeholder="connect.usernamePlaceholder" placeholder="root">
           </div>
           <div class="form-group">
-            <label>会话名称（可选）:</label>
-            <input type="text" id="sessionName" placeholder="自动生成">
+            <label data-i18n="connect.sessionName">会话名称（可选）:</label>
+            <input type="text" id="sessionName" data-i18n-placeholder="connect.sessionNamePlaceholder" placeholder="自动生成">
           </div>
           <div class="form-group">
-            <label>分组:</label>
+            <label data-i18n="connect.group">分组:</label>
             <select id="sessionGroup">
               <option value="">默认分组</option>
             </select>
           </div>
           <div class="form-group">
-            <label>标签颜色:</label>
+            <label data-i18n="connect.tagColor">标签颜色:</label>
             <div class="color-picker">
-              <div class="color-option" data-color="" title="默认">
+              <div class="color-option" data-color="" data-i18n-title="color.default" title="默认">
                 <div class="color-preview" style="background: #888;"></div>
               </div>
-              <div class="color-option" data-color="#4ec9b0" title="绿色 - 开发环境">
+              <div class="color-option" data-color="#4ec9b0" data-i18n-title="color.green" title="绿色 - 开发环境">
                 <div class="color-preview" style="background: #4ec9b0;"></div>
               </div>
-              <div class="color-option" data-color="#ffa500" title="橙色 - 测试环境">
+              <div class="color-option" data-color="#ffa500" data-i18n-title="color.orange" title="橙色 - 测试环境">
                 <div class="color-preview" style="background: #ffa500;"></div>
               </div>
-              <div class="color-option" data-color="#f48771" title="红色 - 生产环境">
+              <div class="color-option" data-color="#f48771" data-i18n-title="color.red" title="红色 - 生产环境">
                 <div class="color-preview" style="background: #f48771;"></div>
               </div>
-              <div class="color-option" data-color="#569cd6" title="蓝色">
+              <div class="color-option" data-color="#569cd6" data-i18n-title="color.blue" title="蓝色">
                 <div class="color-preview" style="background: #569cd6;"></div>
               </div>
-              <div class="color-option" data-color="#c586c0" title="紫色">
+              <div class="color-option" data-color="#c586c0" data-i18n-title="color.purple" title="紫色">
                 <div class="color-preview" style="background: #c586c0;"></div>
               </div>
-              <div class="color-option" data-color="#dcdcaa" title="黄色">
+              <div class="color-option" data-color="#dcdcaa" data-i18n-title="color.yellow" title="黄色">
                 <div class="color-preview" style="background: #dcdcaa;"></div>
               </div>
             </div>
@@ -257,32 +257,32 @@
           <div class="form-group">
             <label>
               <input type="checkbox" id="saveSession" checked>
-              保存此会话配置
+              <span data-i18n="connect.saveSession">保存此会话配置</span>
             </label>
           </div>
           <div class="form-group">
-            <label>认证方式:</label>
+            <label data-i18n="connect.authType">认证方式:</label>
             <select id="authType">
-              <option value="password">密码</option>
-              <option value="key">密钥</option>
+              <option value="password" data-i18n="connect.authPassword">密码</option>
+              <option value="key" data-i18n="connect.authKey">密钥</option>
             </select>
           </div>
           <div class="form-group" id="passwordGroup">
-            <label>密码:</label>
-            <input type="password" id="password">
+            <label data-i18n="connect.password">密码:</label>
+            <input type="password" id="password" data-i18n-placeholder="connect.passwordPlaceholder" placeholder="请输入密码">
           </div>
           <div class="form-group" id="keyGroup" style="display: none;">
-            <label>私钥路径:</label>
+            <label data-i18n="connect.privateKey">私钥路径:</label>
             <div class="input-with-button">
-              <input type="text" id="privateKey" placeholder="点击浏览选择密钥文件">
-              <button type="button" id="browseKeyBtn" class="btn-browse">浏览...</button>
+              <input type="text" id="privateKey" data-i18n-placeholder="connect.privateKeyPlaceholder" placeholder="~/.ssh/id_rsa">
+              <button type="button" id="browseKeyBtn" class="btn-browse" data-i18n="connect.browseKey">浏览...</button>
             </div>
           </div>
         </div>
         <div class="form-actions">
-          <button type="submit" class="btn-primary" id="connectSubmitBtn">连接</button>
-          <button type="button" class="btn-secondary" id="saveOnlyBtn">仅保存</button>
-          <button type="button" id="cancelBtn" class="btn-secondary">取消</button>
+          <button type="submit" class="btn-primary" id="connectSubmitBtn" data-i18n="connect.connectBtn">连接</button>
+          <button type="button" class="btn-secondary" id="saveOnlyBtn" data-i18n="connect.saveOnlyBtn">仅保存</button>
+          <button type="button" id="cancelBtn" class="btn-secondary" data-i18n="connect.cancelBtn">取消</button>
         </div>
       </form>
     </div>
@@ -291,15 +291,15 @@
   <!-- 输入对话框 -->
   <div id="inputDialog" class="dialog" style="display: none;">
     <div class="dialog-content dialog-small">
-      <h3 id="inputDialogTitle">输入</h3>
+      <h3 id="inputDialogTitle" data-i18n="input.title">输入</h3>
       <div class="dialog-body">
         <div class="form-group">
           <input type="text" id="inputDialogValue" class="dialog-input">
         </div>
       </div>
       <div class="form-actions">
-        <button type="button" id="inputDialogOk" class="btn-primary">确定</button>
-        <button type="button" id="inputDialogCancel" class="btn-secondary">取消</button>
+        <button type="button" id="inputDialogOk" class="btn-primary" data-i18n="common.ok">确定</button>
+        <button type="button" id="inputDialogCancel" class="btn-secondary" data-i18n="common.cancel">取消</button>
       </div>
     </div>
   </div>
@@ -307,13 +307,13 @@
   <!-- 确认对话框 -->
   <div id="confirmDialog" class="dialog" style="display: none;">
     <div class="dialog-content dialog-small">
-      <h3 id="confirmDialogTitle">确认</h3>
+      <h3 id="confirmDialogTitle" data-i18n="confirm.title">确认</h3>
       <div class="dialog-body">
         <p id="confirmDialogMessage"></p>
       </div>
       <div class="form-actions">
-        <button type="button" id="confirmDialogOk" class="btn-primary">确定</button>
-        <button type="button" id="confirmDialogCancel" class="btn-secondary">取消</button>
+        <button type="button" id="confirmDialogOk" class="btn-primary" data-i18n="common.ok">确定</button>
+        <button type="button" id="confirmDialogCancel" class="btn-secondary" data-i18n="common.cancel">取消</button>
       </div>
     </div>
   </div>
@@ -321,26 +321,26 @@
   <!-- 分屏会话选择对话框 -->
   <div id="splitSessionDialog" class="dialog" style="display: none;">
     <div class="dialog-content">
-      <h3 id="splitSessionDialogTitle">选择分屏会话</h3>
+      <h3 id="splitSessionDialogTitle" data-i18n="split.selectSession">选择分屏会话</h3>
       <div class="dialog-body">
         <div class="split-session-options">
           <button type="button" id="splitNewSessionBtn" class="split-option-btn">
             <svg width="24" height="24" viewBox="0 0 16 16" fill="currentColor">
               <path d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2z"/>
             </svg>
-            <span>新建连接</span>
+            <span data-i18n="split.newSession">新建连接</span>
           </button>
           <button type="button" id="splitSavedSessionBtn" class="split-option-btn">
             <svg width="24" height="24" viewBox="0 0 16 16" fill="currentColor">
               <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H4z"/>
               <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
             </svg>
-            <span>选择已保存会话</span>
+            <span data-i18n="split.savedSession">选择已保存会话</span>
           </button>
         </div>
         <div id="savedSessionsList" class="saved-sessions-list" style="display: none;">
           <div class="session-search-box">
-            <input type="text" id="splitSessionSearch" placeholder="搜索会话...">
+            <input type="text" id="splitSessionSearch" data-i18n-placeholder="split.searchPlaceholder" placeholder="搜索会话...">
           </div>
           <div id="splitSessionsContainer" class="split-sessions-container">
             <!-- 会话列表将在这里动态生成 -->
@@ -348,7 +348,7 @@
         </div>
       </div>
       <div class="form-actions">
-        <button type="button" id="splitSessionCancelBtn" class="btn-secondary">取消</button>
+        <button type="button" id="splitSessionCancelBtn" class="btn-secondary" data-i18n="split.cancel">取消</button>
       </div>
     </div>
   </div>
@@ -365,7 +365,7 @@
   <!-- 设置对话框 -->
   <div id="settingsDialog" class="dialog" style="display: none;">
     <div class="dialog-content settings-dialog">
-      <h3>⚙️ 设置</h3>
+      <h3 data-i18n="settings.title">⚙️ 设置</h3>
       
       <div class="dialog-body">
         <div class="settings-tabs">
@@ -397,20 +397,20 @@
         <!-- 主题设置 -->
         <div class="settings-panel" data-panel="theme">
           <div class="form-group">
-            <label>主题模式:</label>
+            <label data-i18n="settings.themeMode">主题模式:</label>
             <select id="themeMode">
-              <option value="dark">深色模式</option>
-              <option value="light">浅色模式</option>
-              <option value="dracula">Dracula</option>
-              <option value="monokai">Monokai</option>
-              <option value="solarized-dark">Solarized Dark</option>
-              <option value="nord">Nord</option>
-              <option value="one-dark">One Dark</option>
-              <option value="github-dark">GitHub Dark</option>
-              <option value="tokyo-night">Tokyo Night</option>
-              <option value="gruvbox">Gruvbox Dark</option>
-              <option value="material">Material</option>
-              <option value="custom">自定义</option>
+              <option value="dark" data-i18n="settings.themeDark">深色模式</option>
+              <option value="light" data-i18n="settings.themeLight">浅色模式</option>
+              <option value="dracula" data-i18n="settings.themeDracula">Dracula</option>
+              <option value="monokai" data-i18n="settings.themeMonokai">Monokai</option>
+              <option value="solarized-dark" data-i18n="settings.themeSolarizedDark">Solarized Dark</option>
+              <option value="nord" data-i18n="settings.themeNord">Nord</option>
+              <option value="one-dark" data-i18n="settings.themeOneDark">One Dark</option>
+              <option value="github-dark" data-i18n="settings.themeGithubDark">GitHub Dark</option>
+              <option value="tokyo-night" data-i18n="settings.themeTokyoNight">Tokyo Night</option>
+              <option value="gruvbox" data-i18n="settings.themeGruvbox">Gruvbox Dark</option>
+              <option value="material" data-i18n="settings.themeMaterial">Material</option>
+              <option value="custom" data-i18n="settings.themeCustom">自定义</option>
             </select>
           </div>
 
@@ -428,7 +428,7 @@
           </div>
 
           <div id="customThemeSettings" style="display: none;">
-            <h4>自定义配色</h4>
+            <h4 data-i18n="settings.customTheme">自定义配色</h4>
             
             <div class="color-group">
               <label>背景色:</label>
@@ -638,19 +638,19 @@
             </div>
 
             <div class="form-group" id="changeMasterPasswordGroup" style="display: none;">
-              <button id="changeMasterPasswordBtn" class="btn-secondary">修改主密码</button>
-              <button id="removeMasterPasswordBtn" class="btn-danger">移除主密码</button>
-              <small>移除主密码后，应用将不再需要密码验证</small>
+              <button id="changeMasterPasswordBtn" class="btn-secondary" data-i18n="settings.masterPasswordChangeBtn">修改主密码</button>
+              <button id="removeMasterPasswordBtn" class="btn-danger" data-i18n="settings.masterPasswordRemoveBtn">移除主密码</button>
+              <small data-i18n="settings.masterPasswordRemoveHint">移除主密码后，应用将不再需要密码验证</small>
             </div>
 
             <div class="security-tips">
-              <h5>💡 安全建议</h5>
+              <h5 data-i18n="settings.securityTips">💡 安全建议</h5>
               <ul>
-                <li>使用至少 8 位的强密码</li>
-                <li>包含大小写字母、数字和特殊字符</li>
-                <li>不要使用常见密码或个人信息</li>
-                <li>定期更换密码</li>
-                <li>妥善保管密码，忘记密码将无法恢复数据</li>
+                <li data-i18n="settings.securityTip1">使用至少 8 位的强密码</li>
+                <li data-i18n="settings.securityTip2">包含大小写字母、数字和特殊字符</li>
+                <li data-i18n="settings.securityTip3">不要使用常见密码或个人信息</li>
+                <li data-i18n="settings.securityTip4">定期更换密码</li>
+                <li data-i18n="settings.securityTip5">妥善保管密码，忘记密码将无法恢复数据</li>
               </ul>
             </div>
           </div>
@@ -659,13 +659,13 @@
         <!-- 日志管理 -->
         <div class="settings-panel" data-panel="logs">
           <div class="logs-toolbar">
-            <button id="refreshLogsBtn" class="btn-secondary">刷新</button>
-            <button id="openLogDirBtn" class="btn-secondary">打开日志目录</button>
-            <button id="clearAllLogsBtn" class="btn-secondary" style="color: #f44336;">清除所有日志</button>
+            <button id="refreshLogsBtn" class="btn-secondary" data-i18n="logs.refresh">刷新</button>
+            <button id="openLogDirBtn" class="btn-secondary" data-i18n="logs.openDir">打开日志目录</button>
+            <button id="clearAllLogsBtn" class="btn-secondary" style="color: #f44336;" data-i18n="logs.clearAll">清除所有日志</button>
           </div>
 
           <div class="logs-list" id="logsList">
-            <p style="text-align: center; color: #888; padding: 20px;">暂无日志</p>
+            <p style="text-align: center; color: #888; padding: 20px;" data-i18n="logs.noLogs">暂无日志</p>
           </div>
         </div>
       </div>
