@@ -397,6 +397,10 @@ class SSHClient {
 
     // 键盘快捷键（合并所有快捷键到一个监听器）
     document.addEventListener('keydown', (e) => {
+      // 检查终端是否有焦点
+      const terminalHasFocus = document.activeElement && 
+                               document.activeElement.closest('.terminal');
+      
       // Ctrl/Cmd + N: 新建连接
       if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
         e.preventDefault();
@@ -416,8 +420,8 @@ class SSHClient {
         return;
       }
       
-      // Ctrl/Cmd + B: 切换侧边栏
-      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+      // Ctrl/Cmd + B: 切换侧边栏（终端有焦点时不拦截，让 vim/emacs 处理）
+      if ((e.ctrlKey || e.metaKey) && e.key === 'b' && !terminalHasFocus) {
         e.preventDefault();
         this.toggleSidebar();
         return;
