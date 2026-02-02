@@ -31,12 +31,12 @@
           <input type="text" id="sessionSearch" placeholder="搜索会话..." />
         </div>
         <div class="header-actions">
-          <button id="newSessionBtn" class="btn-primary">新建连接</button>
-          <button id="newGroupBtn" class="btn-secondary">新建分组</button>
+          <button id="newSessionBtn" class="btn-primary" data-i18n="sidebar.newSession">新建连接</button>
+          <button id="newGroupBtn" class="btn-secondary" data-i18n="sidebar.newGroup">新建分组</button>
         </div>
         <div class="header-actions" style="margin-top: 5px;">
-          <button id="exportBtn" class="btn-secondary">导出配置</button>
-          <button id="importBtn" class="btn-secondary">导入配置</button>
+          <button id="exportBtn" class="btn-secondary" data-i18n="sidebar.export">导出配置</button>
+          <button id="importBtn" class="btn-secondary" data-i18n="sidebar.import">导入配置</button>
         </div>
       </div>
       <div class="session-list" id="sessionList">
@@ -369,11 +369,11 @@
       
       <div class="dialog-body">
         <div class="settings-tabs">
-          <button class="settings-tab active" data-tab="general">通用</button>
-          <button class="settings-tab" data-tab="theme">主题</button>
-          <button class="settings-tab" data-tab="security">安全</button>
-          <button class="settings-tab" data-tab="sync">同步</button>
-          <button class="settings-tab" data-tab="logs">日志</button>
+          <button class="settings-tab active" data-tab="general" data-i18n="settings.tabGeneral">通用</button>
+          <button class="settings-tab" data-tab="theme" data-i18n="settings.tabTheme">主题</button>
+          <button class="settings-tab" data-tab="security" data-i18n="settings.tabSecurity">安全</button>
+          <button class="settings-tab" data-tab="sync" data-i18n="settings.tabSync">同步</button>
+          <button class="settings-tab" data-tab="logs" data-i18n="settings.tabLogs">日志</button>
         </div>
 
         <div class="settings-content">
@@ -389,7 +389,7 @@
                 <option value="zh-CN">简体中文</option>
                 <option value="en-US">English</option>
               </select>
-              <small>更改语言后需要重启应用生效 / Restart required after changing language</small>
+              <small data-i18n="settings.languageHint">更改语言后立即生效</small>
             </div>
           </div>
         </div>
@@ -671,8 +671,8 @@
       </div>
 
       <div class="form-actions">
-        <button type="button" id="saveSettingsBtn" class="btn-primary">保存</button>
-        <button type="button" id="cancelSettingsBtn" class="btn-secondary">取消</button>
+        <button type="button" id="saveSettingsBtn" class="btn-primary" data-i18n="settings.apply">保存</button>
+        <button type="button" id="cancelSettingsBtn" class="btn-secondary" data-i18n="settings.close">取消</button>
       </div>
     </div>
   </div>

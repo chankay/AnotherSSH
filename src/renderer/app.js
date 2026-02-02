@@ -743,6 +743,8 @@ class SSHClient {
     
     if (newLang !== oldLang) {
       window.i18n.setLanguage(newLang);
+      // 立即更新界面语言
+      window.i18n.updatePageLanguage();
       this.showNotification('notify.languageChanged', 'success');
     }
   }

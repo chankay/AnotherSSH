@@ -99,6 +99,11 @@ const translations = {
     
     // 设置
     'settings.title': '设置',
+    'settings.tabGeneral': '通用',
+    'settings.tabTheme': '主题',
+    'settings.tabSecurity': '安全',
+    'settings.tabSync': '同步',
+    'settings.tabLogs': '日志',
     'settings.theme': '主题',
     'settings.themeMode': '主题模式',
     'settings.themeDark': '深色',
@@ -143,6 +148,7 @@ const translations = {
     'settings.language': '语言',
     'settings.languageChinese': '简体中文',
     'settings.languageEnglish': 'English',
+    'settings.languageHint': '更改语言后立即生效',
     'settings.resetTheme': '重置主题',
     'settings.apply': '应用',
     'settings.close': '关闭',
@@ -200,7 +206,7 @@ const translations = {
     'notify.passwordTooShort': '密码长度至少为 6 位',
     'notify.webdavTestSuccess': 'WebDAV 连接测试成功',
     'notify.webdavTestFailed': 'WebDAV 连接测试失败',
-    'notify.languageChanged': '语言已更改，重启应用后生效',
+    'notify.languageChanged': '语言已更改',
     'notify.passwordRequired': '请输入密码',
     'notify.operationFailed': '操作失败',
     'notify.oldPasswordRequired': '请输入旧密码',
@@ -322,6 +328,11 @@ const translations = {
     
     // Settings
     'settings.title': 'Settings',
+    'settings.tabGeneral': 'General',
+    'settings.tabTheme': 'Theme',
+    'settings.tabSecurity': 'Security',
+    'settings.tabSync': 'Sync',
+    'settings.tabLogs': 'Logs',
     'settings.theme': 'Theme',
     'settings.themeMode': 'Theme Mode',
     'settings.themeDark': 'Dark',
@@ -366,6 +377,7 @@ const translations = {
     'settings.language': 'Language',
     'settings.languageChinese': '简体中文',
     'settings.languageEnglish': 'English',
+    'settings.languageHint': 'Changes take effect immediately',
     'settings.resetTheme': 'Reset Theme',
     'settings.apply': 'Apply',
     'settings.close': 'Close',
@@ -423,7 +435,7 @@ const translations = {
     'notify.passwordTooShort': 'Password must be at least 6 characters',
     'notify.webdavTestSuccess': 'WebDAV connection test successful',
     'notify.webdavTestFailed': 'WebDAV connection test failed',
-    'notify.languageChanged': 'Language changed, restart to take effect',
+    'notify.languageChanged': 'Language changed',
     'notify.passwordRequired': 'Please enter password',
     'notify.operationFailed': 'Operation failed',
     'notify.oldPasswordRequired': 'Please enter old password',
@@ -496,6 +508,36 @@ class I18n {
   // 获取所有支持的语言
   getSupportedLanguages() {
     return Object.keys(this.translations);
+  }
+
+  // 更新页面上所有带 data-i18n 属性的元素
+  updatePageLanguage() {
+    // 更新所有带 data-i18n 属性的元素
+    document.querySelectorAll('[data-i18n]').forEach(element => {
+      const key = element.getAttribute('data-i18n');
+      const translated = this.t(key);
+      
+      // 根据元素类型更新不同的属性
+      if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+        if (element.placeholder) {
+          element.placeholder = translated;
+        }
+      } else {
+        element.textContent = translated;
+      }
+    });
+
+    // 更新所有带 data-i18n-placeholder 属性的元素
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+      const key = element.getAttribute('data-i18n-placeholder');
+      element.placeholder = this.t(key);
+    });
+
+    // 更新所有带 data-i18n-title 属性的元素
+    document.querySelectorAll('[data-i18n-title]').forEach(element => {
+      const key = element.getAttribute('data-i18n-title');
+      element.title = this.t(key);
+    });
   }
 }
 
