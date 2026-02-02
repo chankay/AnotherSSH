@@ -1821,6 +1821,21 @@ class SSHClient {
       const sessions = groupedSessions[groupPath];
       const parts = groupPath.split('/').filter(p => p);
       
+      // 如果是默认分组（空路径）
+      if (parts.length === 0) {
+        if (!tree[groupPath]) {
+          tree[groupPath] = {
+            name: groupPath,
+            fullPath: groupPath,
+            children: {},
+            sessions: []
+          };
+        }
+        tree[groupPath].sessions = sessions;
+        return;
+      }
+      
+      // 构建路径上的所有节点
       let current = tree;
       parts.forEach((part, index) => {
         if (!current[part]) {
@@ -1831,28 +1846,15 @@ class SSHClient {
             sessions: []
           };
         }
+        
+        // 如果是最后一个部分，设置会话
+        if (index === parts.length - 1) {
+          current[part].sessions = sessions;
+        }
+        
+        // 移动到下一级
         current = current[part].children;
       });
-      
-      // 将会话添加到最后一级
-      if (parts.length > 0) {
-        let node = tree;
-        parts.forEach(part => {
-          node = node[part];
-        });
-        node.sessions = sessions;
-      } else {
-        // 默认分组
-        if (!tree[groupPath]) {
-          tree[groupPath] = {
-            name: groupPath,
-            fullPath: groupPath,
-            children: {},
-            sessions: []
-          };
-        }
-        tree[groupPath].sessions = sessions;
-      }
     });
     
     return tree;
