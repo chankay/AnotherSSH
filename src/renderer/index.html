@@ -369,15 +369,33 @@
       
       <div class="dialog-body">
         <div class="settings-tabs">
-          <button class="settings-tab active" data-tab="theme">主题</button>
+          <button class="settings-tab active" data-tab="general">通用</button>
+          <button class="settings-tab" data-tab="theme">主题</button>
           <button class="settings-tab" data-tab="security">安全</button>
           <button class="settings-tab" data-tab="sync">同步</button>
           <button class="settings-tab" data-tab="logs">日志</button>
         </div>
 
         <div class="settings-content">
+        <!-- 通用设置 -->
+        <div class="settings-panel active" data-panel="general">
+          <div class="security-section">
+            <h4>🌐 语言 / Language</h4>
+            <p class="section-description">选择界面显示语言 / Select interface language</p>
+            
+            <div class="form-group">
+              <label for="languageSelect">语言 / Language:</label>
+              <select id="languageSelect">
+                <option value="zh-CN">简体中文</option>
+                <option value="en-US">English</option>
+              </select>
+              <small>更改语言后需要重启应用生效 / Restart required after changing language</small>
+            </div>
+          </div>
+        </div>
+
         <!-- 主题设置 -->
-        <div class="settings-panel active" data-panel="theme">
+        <div class="settings-panel" data-panel="theme">
           <div class="form-group">
             <label>主题模式:</label>
             <select id="themeMode">
@@ -634,21 +652,6 @@
                 <li>定期更换密码</li>
                 <li>妥善保管密码，忘记密码将无法恢复数据</li>
               </ul>
-            </div>
-          </div>
-
-          <!-- 语言设置 -->
-          <div class="security-section" style="margin-top: 30px;">
-            <h4>🌐 语言 / Language</h4>
-            <p class="section-description">选择界面显示语言 / Select interface language</p>
-            
-            <div class="form-group">
-              <label for="languageSelect">语言 / Language:</label>
-              <select id="languageSelect">
-                <option value="zh-CN">简体中文</option>
-                <option value="en-US">English</option>
-              </select>
-              <small>更改语言后需要重启应用生效 / Restart required after changing language</small>
             </div>
           </div>
         </div>
