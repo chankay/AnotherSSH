@@ -864,7 +864,7 @@ class SSHClient {
     
     // 更新分组下拉列表
     const groupSelect = document.getElementById('sessionGroup');
-    groupSelect.innerHTML = '<option value="">默认分组</option>';
+    groupSelect.innerHTML = `<option value="">${this.t('group.default')}</option>`;
     this.sessionGroups.forEach(group => {
       const option = document.createElement('option');
       option.value = group;
@@ -1765,7 +1765,8 @@ class SSHClient {
     });
     
     // 添加默认分组
-    groupedSessions['默认分组'] = [];
+    const defaultGroupName = this.t('group.default');
+    groupedSessions[defaultGroupName] = [];
     
     // 分配会话到分组，并应用搜索过滤
     this.savedSessions.forEach(session => {
@@ -1777,7 +1778,7 @@ class SSHClient {
         }
       }
 
-      const group = session.group || '默认分组';
+      const group = session.group || this.t('group.default');
       if (!groupedSessions[group]) {
         groupedSessions[group] = [];
       }
@@ -1807,8 +1808,8 @@ class SSHClient {
           <span class="group-count">(${sessions.length})</span>
         </div>
         <div class="group-actions">
-          ${groupName !== '默认分组' ? '<button class="rename-group-btn">重命名</button>' : ''}
-          ${groupName !== '默认分组' ? '<button class="delete-group-btn">删除</button>' : ''}
+          ${groupName !== this.t('group.default') ? `<button class="rename-group-btn" data-i18n="group.rename">${this.t('group.rename')}</button>` : ''}
+          ${groupName !== this.t('group.default') ? `<button class="delete-group-btn" data-i18n="group.delete">${this.t('group.delete')}</button>` : ''}
         </div>
       `;
 
@@ -1853,7 +1854,7 @@ class SSHClient {
         // 显示空状态
         const emptyDiv = document.createElement('div');
         emptyDiv.className = 'empty-group';
-        emptyDiv.textContent = '暂无会话';
+        emptyDiv.textContent = this.t('group.empty');
         sessionsDiv.appendChild(emptyDiv);
       } else {
         sessions.forEach(session => {
@@ -1891,11 +1892,11 @@ class SSHClient {
   }
 
   createNewGroup() {
-    this.showInputDialog('新建分组', '请输入分组名称:', '', (groupName) => {
+    this.showInputDialog(this.t('group.newTitle'), this.t('group.newPrompt'), '', (groupName) => {
       if (!groupName) return;
       
       if (this.sessionGroups.includes(groupName)) {
-        this.showAlert('分组已存在');
+        this.showAlert(this.t('group.alreadyExists'));
         return;
       }
 
@@ -1905,11 +1906,11 @@ class SSHClient {
   }
 
   async renameGroup(oldName) {
-    this.showInputDialog('重命名分组', '请输入新的分组名称:', oldName, async (newName) => {
+    this.showInputDialog(this.t('group.renameTitle'), this.t('group.renamePrompt'), oldName, async (newName) => {
       if (!newName || newName === oldName) return;
 
       if (this.sessionGroups.includes(newName)) {
-        this.showAlert('分组名称已存在');
+        this.showAlert(this.t('group.nameExists'));
         return;
       }
 
@@ -1936,8 +1937,8 @@ class SSHClient {
     
     if (sessions.length > 0) {
       this.showConfirmDialog(
-        '删除分组',
-        `分组 "${groupName}" 中有 ${sessions.length} 个会话。\n\n点击"确定"将会话移至默认分组`,
+        this.t('group.deleteTitle'),
+        this.t('group.deleteMessage').replace('{name}', groupName).replace('{count}', sessions.length),
         async () => {
           // 将会话移至默认分组
           this.savedSessions.forEach(session => {
@@ -2104,8 +2105,8 @@ class SSHClient {
             break;
           case 'delete':
             this.showConfirmDialog(
-              '删除会话',
-              `确定删除会话 "${session.name}" 吗？`,
+              this.t('session.deleteTitle'),
+              this.t('session.deleteMessage').replace('{name}', session.name),
               async () => {
                 await this.deleteSavedSession(session.id);
               }
@@ -2139,20 +2140,20 @@ class SSHClient {
       const result = await window.electronAPI.session.export();
       
       if (result.success) {
-        this.showAlert(`配置已导出到:\n${result.filePath}`);
+        this.showAlert(this.t('session.exportSuccess').replace('{path}', result.filePath));
       } else {
-        this.showAlert('导出失败: ' + result.error);
+        this.showAlert(this.t('session.exportFailed') + ': ' + result.error);
       }
     } catch (error) {
-      this.showAlert('导出错误: ' + error.message);
+      this.showAlert(this.t('session.exportError') + ': ' + error.message);
     }
   }
 
   // 导入配置
   async importConfig() {
     this.showConfirmDialog(
-      '导入配置',
-      '导入配置将会覆盖当前所有会话和分组，是否继续？',
+      this.t('session.importTitle'),
+      this.t('session.importMessage'),
       async () => {
         try {
           const result = await window.electronAPI.session.import();
@@ -2361,8 +2362,8 @@ class SSHClient {
 
     // 显示对话框，标记为编辑模式
     this.editingSessionId = session.id;
-    document.querySelector('#connectDialog h3').textContent = '编辑 SSH 连接';
-    document.getElementById('connectSubmitBtn').textContent = '保存并连接';
+    document.querySelector('#connectDialog h3').textContent = this.t('connect.titleEdit');
+    document.getElementById('connectSubmitBtn').textContent = this.t('connect.btnSaveAndConnect');
     document.getElementById('saveOnlyBtn').style.display = 'inline-block';
     document.getElementById('connectDialog').style.display = 'flex';
   }
@@ -2407,8 +2408,8 @@ class SSHClient {
 
     // 显示对话框，不设置 editingSessionId（这样会创建新会话）
     this.editingSessionId = null;
-    document.querySelector('#connectDialog h3').textContent = '克隆 SSH 连接';
-    document.getElementById('connectSubmitBtn').textContent = '连接';
+    document.querySelector('#connectDialog h3').textContent = this.t('connect.titleClone');
+    document.getElementById('connectSubmitBtn').textContent = this.t('connect.btnConnect');
     document.getElementById('saveOnlyBtn').style.display = 'inline-block';
     document.getElementById('connectDialog').style.display = 'flex';
   }
