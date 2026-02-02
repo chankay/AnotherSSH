@@ -367,8 +367,12 @@ const translations = {
     'group.renamePrompt': '请输入新的分组名称:',
     'group.deleteTitle': '删除分组',
     'group.deleteMessage': '分组 "{name}" 中有 {count} 个会话。\n\n点击"确定"将会话移至默认分组',
+    'group.deleteWithSubgroupsMessage': '分组 "{name}" 及其 {subcount} 个子分组中共有 {count} 个会话。\n\n点击"确定"将所有会话移至默认分组',
     'group.alreadyExists': '分组已存在',
     'group.nameExists': '分组名称已存在',
+    'group.addSubgroup': '添加子分组',
+    'group.addSubgroupTitle': '添加子分组',
+    'group.addSubgroupPrompt': '请输入子分组名称:',
     
     // 会话操作
     'session.deleteTitle': '删除会话',
@@ -785,8 +789,12 @@ const translations = {
     'group.renamePrompt': 'Enter new group name:',
     'group.deleteTitle': 'Delete Group',
     'group.deleteMessage': 'Group "{name}" has {count} sessions.\n\nClick "OK" to move sessions to default group',
+    'group.deleteWithSubgroupsMessage': 'Group "{name}" and its {subcount} subgroups have {count} sessions in total.\n\nClick "OK" to move all sessions to default group',
     'group.alreadyExists': 'Group already exists',
     'group.nameExists': 'Group name already exists',
+    'group.addSubgroup': 'Add Subgroup',
+    'group.addSubgroupTitle': 'Add Subgroup',
+    'group.addSubgroupPrompt': 'Enter subgroup name:',
     
     // Session Operations
     'session.deleteTitle': 'Delete Session',

@@ -854,6 +854,34 @@ class SSHClient {
     }
   }
 
+  // 更新分组选择器（辅助方法）
+  updateGroupSelect(selectedGroup = '') {
+    const groupSelect = document.getElementById('sessionGroup');
+    groupSelect.innerHTML = `<option value="">${this.t('group.default')}</option>`;
+    
+    // 按层级排序分组
+    const sortedGroups = [...this.sessionGroups].sort((a, b) => {
+      const aDepth = (a.match(/\//g) || []).length;
+      const bDepth = (b.match(/\//g) || []).length;
+      if (aDepth !== bDepth) return aDepth - bDepth;
+      return a.localeCompare(b);
+    });
+    
+    sortedGroups.forEach(group => {
+      const option = document.createElement('option');
+      option.value = group;
+      // 根据层级添加缩进
+      const depth = (group.match(/\//g) || []).length;
+      const indent = '　'.repeat(depth); // 使用全角空格缩进
+      const displayName = group.split('/').pop(); // 只显示最后一级名称
+      option.textContent = indent + displayName;
+      if (group === selectedGroup) {
+        option.selected = true;
+      }
+      groupSelect.appendChild(option);
+    });
+  }
+
   showConnectDialog() {
     // 重置编辑模式
     this.editingSessionId = null;
@@ -863,14 +891,7 @@ class SSHClient {
     document.getElementById('saveSession').parentElement.style.display = 'block';
     
     // 更新分组下拉列表
-    const groupSelect = document.getElementById('sessionGroup');
-    groupSelect.innerHTML = `<option value="">${this.t('group.default')}</option>`;
-    this.sessionGroups.forEach(group => {
-      const option = document.createElement('option');
-      option.value = group;
-      option.textContent = group;
-      groupSelect.appendChild(option);
-    });
+    this.updateGroupSelect();
 
     // 重置颜色选择
     document.querySelectorAll('.color-option').forEach(opt => {
@@ -1785,31 +1806,90 @@ class SSHClient {
       groupedSessions[group].push(session);
     });
 
-    // 渲染每个分组
-    Object.keys(groupedSessions).sort().forEach(groupName => {
-      const sessions = groupedSessions[groupName];
+    // 构建分组树结构
+    const groupTree = this.buildGroupTree(groupedSessions);
+    
+    // 渲染分组树
+    this.renderGroupTree(sessionList, groupTree, '');
+  }
+
+  // 构建分组树结构
+  buildGroupTree(groupedSessions) {
+    const tree = {};
+    
+    Object.keys(groupedSessions).forEach(groupPath => {
+      const sessions = groupedSessions[groupPath];
+      const parts = groupPath.split('/').filter(p => p);
       
-      // 如果搜索时分组为空，跳过
-      if (this.searchQuery && sessions.length === 0) {
+      let current = tree;
+      parts.forEach((part, index) => {
+        if (!current[part]) {
+          current[part] = {
+            name: part,
+            fullPath: parts.slice(0, index + 1).join('/'),
+            children: {},
+            sessions: []
+          };
+        }
+        current = current[part].children;
+      });
+      
+      // 将会话添加到最后一级
+      if (parts.length > 0) {
+        let node = tree;
+        parts.forEach(part => {
+          node = node[part];
+        });
+        node.sessions = sessions;
+      } else {
+        // 默认分组
+        if (!tree[groupPath]) {
+          tree[groupPath] = {
+            name: groupPath,
+            fullPath: groupPath,
+            children: {},
+            sessions: []
+          };
+        }
+        tree[groupPath].sessions = sessions;
+      }
+    });
+    
+    return tree;
+  }
+
+  // 渲染分组树
+  renderGroupTree(container, tree, parentPath, level = 0) {
+    Object.keys(tree).sort().forEach(key => {
+      const node = tree[key];
+      const groupName = node.name;
+      const fullPath = node.fullPath;
+      const sessions = node.sessions || [];
+      const hasChildren = Object.keys(node.children).length > 0;
+      
+      // 如果搜索时分组和子分组都为空，跳过
+      if (this.searchQuery && sessions.length === 0 && !hasChildren) {
         return;
       }
 
-      const isCollapsed = this.collapsedGroups.has(groupName);
+      const isCollapsed = this.collapsedGroups.has(fullPath);
       
       const groupDiv = document.createElement('div');
       groupDiv.className = 'session-group';
+      groupDiv.style.marginLeft = `${level * 16}px`;
       
       const groupHeader = document.createElement('div');
       groupHeader.className = 'group-header';
       groupHeader.innerHTML = `
         <div class="group-title">
-          <span class="group-toggle ${isCollapsed ? 'collapsed' : ''}">▼</span>
+          <span class="group-toggle ${isCollapsed ? 'collapsed' : ''}">${hasChildren || sessions.length > 0 ? '▼' : '•'}</span>
           <span class="group-name">${groupName}</span>
           <span class="group-count">(${sessions.length})</span>
         </div>
         <div class="group-actions">
-          ${groupName !== this.t('group.default') ? `<button class="rename-group-btn" data-i18n="group.rename">${this.t('group.rename')}</button>` : ''}
-          ${groupName !== this.t('group.default') ? `<button class="delete-group-btn" data-i18n="group.delete">${this.t('group.delete')}</button>` : ''}
+          <button class="add-subgroup-btn" title="${this.t('group.addSubgroup')}" data-i18n-title="group.addSubgroup">+</button>
+          ${fullPath !== this.t('group.default') ? `<button class="rename-group-btn" data-i18n="group.rename">${this.t('group.rename')}</button>` : ''}
+          ${fullPath !== this.t('group.default') ? `<button class="delete-group-btn" data-i18n="group.delete">${this.t('group.delete')}</button>` : ''}
         </div>
       `;
 
@@ -1817,21 +1897,30 @@ class SSHClient {
       groupHeader.addEventListener('click', (e) => {
         if (e.target.closest('.group-actions')) return;
         
-        if (this.collapsedGroups.has(groupName)) {
-          this.collapsedGroups.delete(groupName);
+        if (this.collapsedGroups.has(fullPath)) {
+          this.collapsedGroups.delete(fullPath);
         } else {
-          this.collapsedGroups.add(groupName);
+          this.collapsedGroups.add(fullPath);
         }
-        this.saveCollapsedGroups(); // 保存折叠状态
+        this.saveCollapsedGroups();
         this.renderSessionList();
       });
+
+      // 添加子分组
+      const addSubgroupBtn = groupHeader.querySelector('.add-subgroup-btn');
+      if (addSubgroupBtn) {
+        addSubgroupBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.createSubGroup(fullPath);
+        });
+      }
 
       // 重命名分组
       const renameBtn = groupHeader.querySelector('.rename-group-btn');
       if (renameBtn) {
         renameBtn.addEventListener('click', (e) => {
           e.stopPropagation();
-          this.renameGroup(groupName);
+          this.renameGroup(fullPath);
         });
       }
 
@@ -1840,55 +1929,85 @@ class SSHClient {
       if (deleteBtn) {
         deleteBtn.addEventListener('click', (e) => {
           e.stopPropagation();
-          this.deleteGroup(groupName);
+          this.deleteGroup(fullPath);
         });
       }
 
       groupDiv.appendChild(groupHeader);
 
       // 会话列表
-      const sessionsDiv = document.createElement('div');
-      sessionsDiv.className = `group-sessions ${isCollapsed ? 'collapsed' : ''}`;
-      
-      if (sessions.length === 0) {
-        // 显示空状态
-        const emptyDiv = document.createElement('div');
-        emptyDiv.className = 'empty-group';
-        emptyDiv.textContent = this.t('group.empty');
-        sessionsDiv.appendChild(emptyDiv);
-      } else {
-        sessions.forEach(session => {
-          const item = document.createElement('div');
-          item.className = 'session-item';
-          
-          // 高亮搜索结果
-          if (this.searchQuery) {
-            item.classList.add('highlight');
-          }
+      if (!isCollapsed) {
+        const sessionsDiv = document.createElement('div');
+        sessionsDiv.className = 'group-sessions';
+        
+        if (sessions.length === 0 && !hasChildren) {
+          // 显示空状态
+          const emptyDiv = document.createElement('div');
+          emptyDiv.className = 'empty-group';
+          emptyDiv.textContent = this.t('group.empty');
+          sessionsDiv.appendChild(emptyDiv);
+        } else if (sessions.length > 0) {
+          sessions.forEach(session => {
+            const item = document.createElement('div');
+            item.className = 'session-item';
+            
+            // 高亮搜索结果
+            if (this.searchQuery) {
+              item.classList.add('highlight');
+            }
 
-          item.innerHTML = `
-            <span>${session.name || session.username + '@' + session.host}</span>
-          `;
+            item.innerHTML = `
+              <span>${session.name || session.username + '@' + session.host}</span>
+            `;
 
-          // 双击快速连接
-          item.addEventListener('dblclick', () => {
-            this.connectSavedSession(session);
+            // 双击快速连接
+            item.addEventListener('dblclick', () => {
+              this.connectSavedSession(session);
+            });
+
+            // 右键菜单
+            item.addEventListener('contextmenu', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              this.showSessionContextMenu(e, session);
+            });
+
+            sessionsDiv.appendChild(item);
           });
+        }
 
-          // 右键菜单
-          item.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            this.showSessionContextMenu(e, session);
-          });
-
-          sessionsDiv.appendChild(item);
-        });
+        groupDiv.appendChild(sessionsDiv);
+        
+        // 递归渲染子分组
+        if (hasChildren && !isCollapsed) {
+          this.renderGroupTree(container, node.children, fullPath, level + 1);
+        }
       }
 
-      groupDiv.appendChild(sessionsDiv);
-      sessionList.appendChild(groupDiv);
+      container.appendChild(groupDiv);
     });
+  }
+
+  // 创建子分组
+  createSubGroup(parentPath) {
+    this.showInputDialog(
+      this.t('group.addSubgroupTitle'),
+      this.t('group.addSubgroupPrompt'),
+      '',
+      (subGroupName) => {
+        if (!subGroupName) return;
+        
+        const fullPath = parentPath ? `${parentPath}/${subGroupName}` : subGroupName;
+        
+        if (this.sessionGroups.includes(fullPath)) {
+          this.showAlert(this.t('group.alreadyExists'));
+          return;
+        }
+
+        this.sessionGroups.push(fullPath);
+        this.renderSessionList();
+      }
+    );
   }
 
   createNewGroup() {
@@ -1933,36 +2052,51 @@ class SSHClient {
   }
 
   async deleteGroup(groupName) {
-    const sessions = this.savedSessions.filter(s => s.group === groupName);
+    // 查找该分组及其所有子分组的会话
+    const affectedSessions = this.savedSessions.filter(s => 
+      s.group === groupName || s.group?.startsWith(groupName + '/')
+    );
     
-    if (sessions.length > 0) {
+    // 查找所有子分组
+    const affectedGroups = this.sessionGroups.filter(g => 
+      g === groupName || g.startsWith(groupName + '/')
+    );
+    
+    if (affectedSessions.length > 0) {
+      const message = affectedGroups.length > 1 
+        ? this.t('group.deleteWithSubgroupsMessage')
+            .replace('{name}', groupName)
+            .replace('{count}', affectedSessions.length)
+            .replace('{subcount}', affectedGroups.length - 1)
+        : this.t('group.deleteMessage')
+            .replace('{name}', groupName)
+            .replace('{count}', affectedSessions.length);
+      
       this.showConfirmDialog(
         this.t('group.deleteTitle'),
-        this.t('group.deleteMessage').replace('{name}', groupName).replace('{count}', sessions.length),
+        message,
         async () => {
           // 将会话移至默认分组
           this.savedSessions.forEach(session => {
-            if (session.group === groupName) {
+            if (session.group === groupName || session.group?.startsWith(groupName + '/')) {
               session.group = '';
             }
           });
 
-          // 删除分组
-          const index = this.sessionGroups.indexOf(groupName);
-          if (index > -1) {
-            this.sessionGroups.splice(index, 1);
-          }
+          // 删除分组及其所有子分组
+          this.sessionGroups = this.sessionGroups.filter(g => 
+            g !== groupName && !g.startsWith(groupName + '/')
+          );
 
           await window.electronAPI.session.save(this.savedSessions);
           this.renderSessionList();
         }
       );
     } else {
-      // 直接删除空分组
-      const index = this.sessionGroups.indexOf(groupName);
-      if (index > -1) {
-        this.sessionGroups.splice(index, 1);
-      }
+      // 直接删除空分组及其子分组
+      this.sessionGroups = this.sessionGroups.filter(g => 
+        g !== groupName && !g.startsWith(groupName + '/')
+      );
       this.renderSessionList();
     }
   }
@@ -2335,17 +2469,7 @@ class SSHClient {
     }
 
     // 设置分组
-    const groupSelect = document.getElementById('sessionGroup');
-    groupSelect.innerHTML = '<option value="">默认分组</option>';
-    this.sessionGroups.forEach(group => {
-      const option = document.createElement('option');
-      option.value = group;
-      option.textContent = group;
-      if (group === session.group) {
-        option.selected = true;
-      }
-      groupSelect.appendChild(option);
-    });
+    this.updateGroupSelect(session.group);
 
     // 设置颜色
     document.querySelectorAll('.color-option').forEach(opt => {
@@ -2390,17 +2514,7 @@ class SSHClient {
     }
 
     // 设置分组
-    const groupSelect = document.getElementById('sessionGroup');
-    groupSelect.innerHTML = '<option value="">默认分组</option>';
-    this.sessionGroups.forEach(group => {
-      const option = document.createElement('option');
-      option.value = group;
-      option.textContent = group;
-      if (group === session.group) {
-        option.selected = true;
-      }
-      groupSelect.appendChild(option);
-    });
+    this.updateGroupSelect(session.group);
 
     // 显示"保存此会话配置"选项（默认勾选）
     document.getElementById('saveSession').parentElement.style.display = 'block';
