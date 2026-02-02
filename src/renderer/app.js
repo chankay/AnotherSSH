@@ -3966,17 +3966,17 @@ class SSHClient {
             </div>
           </div>
           <div class="log-actions">
-            <button class="btn-icon" onclick="app.showLogViewer('${log.path}')" data-i18n-title="logs.view" title="${this.t('logs.view')}">
+            <button class="btn-icon log-view-btn" data-log-path="${this.escapeHtml(log.path)}" data-i18n-title="logs.view" title="${this.t('logs.view')}">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M8 2C4.5 2 1.5 4.5 0 8c1.5 3.5 4.5 6 8 6s6.5-2.5 8-6c-1.5-3.5-4.5-6-8-6zm0 10c-2.2 0-4-1.8-4-4s1.8-4 4-4 4 1.8 4 4-1.8 4-4 4zm0-6.5c-1.4 0-2.5 1.1-2.5 2.5s1.1 2.5 2.5 2.5 2.5-1.1 2.5-2.5-1.1-2.5-2.5-2.5z"/>
               </svg>
             </button>
-            <button class="btn-icon" onclick="app.exportLog('${log.path}')" data-i18n-title="logs.export" title="${this.t('logs.export')}">
+            <button class="btn-icon log-export-btn" data-log-path="${this.escapeHtml(log.path)}" data-i18n-title="logs.export" title="${this.t('logs.export')}">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M8 0L4 4h3v5h2V4h3L8 0zM2 12v2h12v-2H2z"/>
               </svg>
             </button>
-            <button class="btn-icon" onclick="app.deleteLog('${log.path}')" data-i18n-title="logs.delete" title="${this.t('logs.delete')}" style="color: #f44336;">
+            <button class="btn-icon log-delete-btn" data-log-path="${this.escapeHtml(log.path)}" data-i18n-title="logs.delete" title="${this.t('logs.delete')}" style="color: #f44336;">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M11 2H9c0-.55-.45-1-1-1H8c-.55 0-1 .45-1 1H5c-.55 0-1 .45-1 1v1h8V3c0-.55-.45-1-1-1zM4 5v9c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V5H4z"/>
               </svg>
@@ -3984,6 +3984,25 @@ class SSHClient {
           </div>
         </div>
       `).join('');
+      
+      // 绑定事件监听器
+      document.querySelectorAll('.log-view-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          this.showLogViewer(btn.dataset.logPath);
+        });
+      });
+      
+      document.querySelectorAll('.log-export-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          this.exportLog(btn.dataset.logPath);
+        });
+      });
+      
+      document.querySelectorAll('.log-delete-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          this.deleteLog(btn.dataset.logPath);
+        });
+      });
     } catch (error) {
       console.error('Failed to load logs:', error);
       this.showNotification('notify.loadLogsFailed', 'error');
