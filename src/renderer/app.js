@@ -721,6 +721,30 @@ class SSHClient {
     }
   }
 
+  // 加载语言设置
+  loadLanguageSettings() {
+    const currentLang = window.i18n.getCurrentLanguage();
+    const languageSelect = document.getElementById('languageSelect');
+    if (languageSelect) {
+      languageSelect.value = currentLang;
+    }
+  }
+
+  // 保存语言设置
+  saveLanguageSettings() {
+    const languageSelect = document.getElementById('languageSelect');
+    const newLang = languageSelect.value;
+    const oldLang = window.i18n.getCurrentLanguage();
+    
+    if (newLang !== oldLang) {
+      window.i18n.setLanguage(newLang);
+      this.showNotification(
+        newLang === 'zh-CN' ? '语言已更改，重启应用后生效' : 'Language changed, restart to take effect',
+        'success'
+      );
+    }
+  }
+
   showChangeMasterPasswordDialog() {
     // 先隐藏设置对话框
     document.getElementById('settingsDialog').style.display = 'none';
@@ -2177,9 +2201,15 @@ class SSHClient {
   }
 
   showNotification(message, type = 'info') {
+    // 如果 message 以 'notify.' 开头，尝试翻译
+    let displayMessage = message;
+    if (message.startsWith('notify.') && window.i18n) {
+      displayMessage = window.i18n.t(message, message);
+    }
+    
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
-    notification.textContent = message;
+    notification.textContent = displayMessage;
     document.body.appendChild(notification);
 
     setTimeout(() => {
@@ -3112,6 +3142,7 @@ class SSHClient {
     this.loadSettings();
     this.loadWebDAVConfig(); // 加载 WebDAV 配置
     this.updateMasterPasswordStatus(); // 更新主密码状态
+    this.loadLanguageSettings(); // 加载语言设置
     document.getElementById('settingsDialog').style.display = 'flex';
     
     // 只在第一次打开时初始化事件监听器
@@ -3252,6 +3283,11 @@ class SSHClient {
 
     document.getElementById('clearAllLogsBtn').addEventListener('click', async () => {
       await this.clearAllLogs();
+    });
+
+    // 语言选择
+    document.getElementById('languageSelect').addEventListener('change', () => {
+      this.saveLanguageSettings();
     });
   }
 
