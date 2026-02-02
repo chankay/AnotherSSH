@@ -648,17 +648,17 @@ class SSHClient {
     if (title.includes('设置主密码')) {
       // 设置主密码
       if (!password) {
-        this.showNotification('请输入密码', 'error');
+        this.showNotification('notify.passwordRequired', 'error');
         return;
       }
       
       if (password !== confirmPassword) {
-        this.showNotification('两次输入的密码不一致', 'error');
+        this.showNotification('notify.passwordMismatch', 'error');
         return;
       }
       
       if (password.length < 6) {
-        this.showNotification('密码长度至少为 6 位', 'error');
+        this.showNotification('notify.passwordTooShort', 'error');
         return;
       }
       
@@ -666,16 +666,16 @@ class SSHClient {
       if (result.success) {
         // 记录用户已经设置过主密码
         await window.electronAPI.masterPassword.setPrompted();
-        this.showNotification('主密码设置成功', 'success');
+        this.showNotification('notify.masterPasswordSet', 'success');
         this.hideMasterPasswordDialog();
         // 应用已经初始化，不需要再调用 initializeApp
       } else {
-        this.showNotification('设置失败: ' + result.error, 'error');
+        this.showNotification('notify.operationFailed', 'error');
       }
     } else if (title === '输入主密码') {
       // 验证主密码
       if (!password) {
-        this.showNotification('请输入密码', 'error');
+        this.showNotification('notify.passwordRequired', 'error');
         return;
       }
       
@@ -684,7 +684,7 @@ class SSHClient {
         this.hideMasterPasswordDialog();
         this.unlockUI(); // 解锁界面
       } else {
-        this.showNotification('密码错误，请重试', 'error');
+        this.showNotification('notify.masterPasswordWrong', 'error');
         document.getElementById('masterPassword').value = '';
         document.getElementById('masterPassword').focus();
       }
@@ -738,10 +738,7 @@ class SSHClient {
     
     if (newLang !== oldLang) {
       window.i18n.setLanguage(newLang);
-      this.showNotification(
-        newLang === 'zh-CN' ? '语言已更改，重启应用后生效' : 'Language changed, restart to take effect',
-        'success'
-      );
+      this.showNotification('notify.languageChanged', 'success');
     }
   }
 
@@ -815,28 +812,28 @@ class SSHClient {
     const confirmPassword = document.getElementById('masterPasswordConfirm').value;
     
     if (!oldPassword) {
-      this.showNotification('请输入旧密码', 'error');
+      this.showNotification('notify.oldPasswordRequired', 'error');
       return;
     }
     
     if (!newPassword) {
-      this.showNotification('请输入新密码', 'error');
+      this.showNotification('notify.newPasswordRequired', 'error');
       return;
     }
     
     if (newPassword !== confirmPassword) {
-      this.showNotification('两次输入的新密码不一致', 'error');
+      this.showNotification('notify.passwordMismatch', 'error');
       return;
     }
     
     if (newPassword.length < 6) {
-      this.showNotification('新密码长度至少为 6 位', 'error');
+      this.showNotification('notify.passwordTooShort', 'error');
       return;
     }
     
     const result = await window.electronAPI.masterPassword.change(oldPassword, newPassword);
     if (result.success) {
-      this.showNotification('主密码修改成功', 'success');
+      this.showNotification('notify.masterPasswordChanged', 'success');
       this.hideMasterPasswordDialog();
       document.getElementById('oldPasswordGroup').style.display = 'none';
       // 恢复标签和占位符
@@ -846,7 +843,7 @@ class SSHClient {
       document.getElementById('settingsDialog').style.display = 'flex';
       this.updateMasterPasswordStatus();
     } else {
-      this.showNotification('修改失败: ' + result.error, 'error');
+      this.showNotification('notify.operationFailed', 'error');
     }
   }
 
@@ -924,14 +921,14 @@ class SSHClient {
           if (result.success) {
             this.createTerminal(result.sessionId, config);
             this.hideConnectDialog();
-            this.showNotification('会话已更新并连接成功', 'success');
+            this.showNotification('notify.sessionUpdatedAndConnected', 'success');
           } else {
             this.hideConnectDialog();
-            this.showNotification('会话已更新，但连接失败: ' + result.error, 'error');
+            this.showNotification('notify.sessionUpdatedButConnectFailed', 'error');
           }
         } catch (error) {
           this.hideConnectDialog();
-          this.showNotification('会话已更新，但连接错误: ' + error.message, 'error');
+          this.showNotification('notify.sessionUpdatedButConnectError', 'error');
         }
         return;
       }
@@ -947,7 +944,7 @@ class SSHClient {
       
       if (result) {
         this.hideConnectDialog();
-        this.showNotification('分屏创建成功', 'success');
+        this.showNotification('notify.splitCreated', 'success');
       }
       return;
     }
@@ -973,10 +970,10 @@ class SSHClient {
         this.createTerminal(result.sessionId, config);
         this.hideConnectDialog();
       } else {
-        this.showNotification('连接失败: ' + result.error, 'error');
+        this.showNotification('notify.connectFailed', 'error');
       }
     } catch (error) {
-      this.showNotification('连接错误: ' + error.message, 'error');
+      this.showNotification('notify.connectError', 'error');
     }
   }
 
@@ -998,7 +995,7 @@ class SSHClient {
 
     // 验证必填字段
     if (!config.host || !config.username) {
-      this.showNotification('请填写主机地址和用户名', 'error');
+      this.showNotification('notify.requiredFieldsMissing', 'error');
       return;
     }
 
@@ -1017,7 +1014,7 @@ class SSHClient {
         await window.electronAPI.session.save(this.savedSessions);
         this.renderSessionList();
         this.hideConnectDialog();
-        this.showNotification('会话已更新', 'success');
+        this.showNotification('notify.sessionUpdated', 'success');
         return;
       }
     }
@@ -1034,7 +1031,7 @@ class SSHClient {
     await window.electronAPI.session.save(this.savedSessions);
     this.renderSessionList();
     this.hideConnectDialog();
-    this.showNotification('会话已保存', 'success');
+    this.showNotification('notify.sessionSaved', 'success');
   }
 
   createTerminal(sessionId, config) {
@@ -1480,7 +1477,7 @@ class SSHClient {
         
         terminalData.terminal.write('\r\n\x1b[32m[重连成功]\x1b[0m\r\n');
         this.updateTabStatus(sessionId, 'connected');
-        this.showNotification('重连成功', 'success');
+        this.showNotification('notify.reconnectSuccess', 'success');
       } else {
         terminalData.terminal.write(`\r\n\x1b[31m[重连失败: ${result.error}]\x1b[0m\r\n`);
         terminalData.terminal.write('\x1b[33m按 Enter 键重试\x1b[0m\r\n');
@@ -1586,7 +1583,7 @@ class SSHClient {
       if (result.success) {
         // 重连成功
         terminalData.terminal.write('\r\n\x1b[32m[重连成功]\x1b[0m\r\n');
-        this.showNotification('重连成功', 'success');
+        this.showNotification('notify.reconnectSuccess', 'success');
         this.updateTabStatus(sessionId, 'connected');
         this.clearReconnectState(sessionId);
         
@@ -1623,7 +1620,7 @@ class SSHClient {
       if (config.attempts >= config.maxAttempts) {
         // 达到最大次数
         terminalData.terminal.write('\r\n\x1b[31m[已达到最大重连次数，停止重连]\x1b[0m\r\n');
-        this.showNotification('重连失败，已达到最大尝试次数', 'error');
+        this.showNotification('notify.reconnectMaxAttempts', 'error');
         this.clearReconnectState(sessionId);
         
         // 3秒后关闭标签页
