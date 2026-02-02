@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron');
 const path = require('path');
 const SSHManager = require('./ssh-manager');
 const SessionStore = require('./session-store');
@@ -15,6 +15,190 @@ const webdavSync = new WebDAVSync();
 const logManager = new LogManager();
 const masterPassword = new MasterPassword();
 
+// 创建应用菜单
+function createMenu() {
+  const isMac = process.platform === 'darwin';
+  
+  const template = [
+    // macOS 应用菜单
+    ...(isMac ? [{
+      label: app.name,
+      submenu: [
+        { label: '关于 AnotherSSH', click: () => mainWindow.webContents.send('menu:about') },
+        { type: 'separator' },
+        { label: '设置...', accelerator: 'Cmd+,', click: () => mainWindow.webContents.send('menu:settings') },
+        { type: 'separator' },
+        { label: '隐藏 AnotherSSH', role: 'hide' },
+        { label: '隐藏其他', role: 'hideOthers' },
+        { label: '显示全部', role: 'unhide' },
+        { type: 'separator' },
+        { label: '退出', role: 'quit' }
+      ]
+    }] : []),
+    
+    // 文件菜单
+    {
+      label: '文件',
+      submenu: [
+        { 
+          label: '新建连接', 
+          accelerator: 'CmdOrCtrl+N',
+          click: () => mainWindow.webContents.send('menu:new-connection')
+        },
+        { 
+          label: '新建分组', 
+          accelerator: 'CmdOrCtrl+Shift+N',
+          click: () => mainWindow.webContents.send('menu:new-group')
+        },
+        { type: 'separator' },
+        { 
+          label: '导入配置...', 
+          accelerator: 'CmdOrCtrl+I',
+          click: () => mainWindow.webContents.send('menu:import')
+        },
+        { 
+          label: '导出配置...', 
+          accelerator: 'CmdOrCtrl+E',
+          click: () => mainWindow.webContents.send('menu:export')
+        },
+        { type: 'separator' },
+        ...(!isMac ? [
+          { label: '设置...', accelerator: 'Ctrl+,', click: () => mainWindow.webContents.send('menu:settings') },
+          { type: 'separator' }
+        ] : []),
+        ...(!isMac ? [{ label: '退出', role: 'quit' }] : [])
+      ]
+    },
+    
+    // 编辑菜单
+    {
+      label: '编辑',
+      submenu: [
+        { label: '撤销', role: 'undo' },
+        { label: '重做', role: 'redo' },
+        { type: 'separator' },
+        { label: '剪切', role: 'cut' },
+        { label: '复制', role: 'copy' },
+        { label: '粘贴', role: 'paste' },
+        { label: '全选', role: 'selectAll' },
+        { type: 'separator' },
+        { 
+          label: '查找', 
+          accelerator: 'CmdOrCtrl+F',
+          click: () => mainWindow.webContents.send('menu:find')
+        },
+        { 
+          label: '清屏', 
+          accelerator: 'CmdOrCtrl+K',
+          click: () => mainWindow.webContents.send('menu:clear')
+        }
+      ]
+    },
+    
+    // 查看菜单
+    {
+      label: '查看',
+      submenu: [
+        { 
+          label: '切换侧边栏', 
+          accelerator: 'CmdOrCtrl+B',
+          click: () => mainWindow.webContents.send('menu:toggle-sidebar')
+        },
+        { type: 'separator' },
+        { 
+          label: '放大', 
+          accelerator: 'CmdOrCtrl+=',
+          click: () => mainWindow.webContents.send('menu:zoom-in')
+        },
+        { 
+          label: '缩小', 
+          accelerator: 'CmdOrCtrl+-',
+          click: () => mainWindow.webContents.send('menu:zoom-out')
+        },
+        { 
+          label: '重置缩放', 
+          accelerator: 'CmdOrCtrl+0',
+          click: () => mainWindow.webContents.send('menu:zoom-reset')
+        },
+        { type: 'separator' },
+        { label: '重新加载', role: 'reload' },
+        { label: '强制重新加载', role: 'forceReload' },
+        { label: '切换开发者工具', role: 'toggleDevTools' },
+        { type: 'separator' },
+        { label: '全屏', role: 'togglefullscreen' }
+      ]
+    },
+    
+    // 窗口菜单
+    {
+      label: '窗口',
+      submenu: [
+        { 
+          label: '水平分屏', 
+          accelerator: 'CmdOrCtrl+Shift+D',
+          click: () => mainWindow.webContents.send('menu:split-horizontal')
+        },
+        { 
+          label: '垂直分屏', 
+          accelerator: 'CmdOrCtrl+Shift+E',
+          click: () => mainWindow.webContents.send('menu:split-vertical')
+        },
+        { 
+          label: '关闭分屏', 
+          accelerator: 'CmdOrCtrl+W',
+          click: () => mainWindow.webContents.send('menu:close-split')
+        },
+        { type: 'separator' },
+        { label: '最小化', role: 'minimize' },
+        { label: '缩放', role: 'zoom' },
+        ...(isMac ? [
+          { type: 'separator' },
+          { label: '前置全部窗口', role: 'front' }
+        ] : [
+          { label: '关闭', role: 'close' }
+        ])
+      ]
+    },
+    
+    // 帮助菜单
+    {
+      label: '帮助',
+      submenu: [
+        {
+          label: '用户手册',
+          click: async () => {
+            await shell.openExternal('https://github.com/chankay/AnotherSSH/blob/main/doc/USER_MANUAL.md')
+          }
+        },
+        {
+          label: '报告问题',
+          click: async () => {
+            await shell.openExternal('https://github.com/chankay/AnotherSSH/issues')
+          }
+        },
+        {
+          label: '项目主页',
+          click: async () => {
+            await shell.openExternal('https://github.com/chankay/AnotherSSH')
+          }
+        },
+        { type: 'separator' },
+        {
+          label: '检查更新',
+          click: () => mainWindow.webContents.send('menu:check-updates')
+        },
+        { type: 'separator' },
+        ...(!isMac ? [
+          { label: '关于 AnotherSSH', click: () => mainWindow.webContents.send('menu:about') }
+        ] : [])
+      ]
+    }
+  ];
+  
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -27,6 +211,9 @@ function createWindow() {
   });
 
   mainWindow.loadFile('src/renderer/index.html');
+
+  // 创建菜单
+  createMenu();
 
   if (process.argv.includes('--dev')) {
     mainWindow.webContents.openDevTools();

@@ -34,14 +34,11 @@
           <button id="newSessionBtn" class="btn-primary" data-i18n="sidebar.newSession">新建连接</button>
           <button id="newGroupBtn" class="btn-secondary" data-i18n="sidebar.newGroup">新建分组</button>
         </div>
-        <div class="header-actions" style="margin-top: 5px;">
-          <button id="exportBtn" class="btn-secondary" data-i18n="sidebar.export">导出配置</button>
-          <button id="importBtn" class="btn-secondary" data-i18n="sidebar.import">导入配置</button>
-        </div>
       </div>
       <div class="session-list" id="sessionList">
         <!-- 会话列表 -->
       </div>
+      <div class="sidebar-resizer" id="sidebarResizer"></div>
     </div>
     
     <div class="main-content">
@@ -168,6 +165,39 @@
             <!-- 文件列表 -->
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 关于对话框 -->
+  <div id="aboutDialog" class="dialog" style="display: none;">
+    <div class="dialog-content dialog-small">
+      <div class="about-content">
+        <div class="about-logo">
+          <img src="../../assets/logo.svg" alt="AnotherSSH" class="about-logo-image">
+        </div>
+        <h2 class="about-title">AnotherSSH</h2>
+        <p class="about-version" id="aboutVersion">v1.0.0</p>
+        <p class="about-tagline">Another way to connect</p>
+        <div class="about-description">
+          <p>一个现代化的 SSH 客户端</p>
+          <p>支持多标签、分屏、SFTP、主题定制等功能</p>
+        </div>
+        <div class="about-features">
+          <div class="feature-item">✨ 多标签管理</div>
+          <div class="feature-item">🪟 灵活分屏</div>
+          <div class="feature-item">📁 SFTP 文件管理</div>
+          <div class="feature-item">🎨 主题定制</div>
+          <div class="feature-item">🔐 主密码保护</div>
+          <div class="feature-item">☁️ WebDAV 同步</div>
+        </div>
+        <div class="about-footer">
+          <p>© 2024 AnotherSSH</p>
+          <p>MIT License</p>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-primary" id="aboutCloseBtn">关闭</button>
       </div>
     </div>
   </div>

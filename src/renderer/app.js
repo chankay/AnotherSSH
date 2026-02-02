@@ -139,6 +139,9 @@ class SSHClient {
         this.updateProgress(data);
       });
 
+      // 监听菜单事件
+      this.setupMenuListeners();
+
       // 监听窗口大小变化
       let resizeTimeout;
       window.addEventListener('resize', () => {
@@ -187,6 +190,81 @@ class SSHClient {
 
     document.getElementById('masterPasswordCancelBtn').addEventListener('click', () => {
       this.hideMasterPasswordDialog();
+    });
+
+    // 关于对话框关闭按钮
+    document.getElementById('aboutCloseBtn').addEventListener('click', () => {
+      document.getElementById('aboutDialog').style.display = 'none';
+    });
+  }
+
+  setupMenuListeners() {
+    // 监听来自主进程菜单的事件
+    window.ipcRenderer.on('menu:new-connection', () => {
+      this.showConnectDialog();
+    });
+
+    window.ipcRenderer.on('menu:new-group', () => {
+      this.createNewGroup();
+    });
+
+    window.ipcRenderer.on('menu:import', () => {
+      this.importConfig();
+    });
+
+    window.ipcRenderer.on('menu:export', () => {
+      this.exportConfig();
+    });
+
+    window.ipcRenderer.on('menu:settings', () => {
+      this.showSettingsDialog();
+    });
+
+    window.ipcRenderer.on('menu:find', () => {
+      this.toggleSearch();
+    });
+
+    window.ipcRenderer.on('menu:clear', () => {
+      const activeTerminal = this.terminals.get(this.activeSessionId);
+      if (activeTerminal && activeTerminal.terminal) {
+        activeTerminal.terminal.clear();
+      }
+    });
+
+    window.ipcRenderer.on('menu:toggle-sidebar', () => {
+      this.toggleSidebar();
+    });
+
+    window.ipcRenderer.on('menu:zoom-in', () => {
+      this.increaseFontSize();
+    });
+
+    window.ipcRenderer.on('menu:zoom-out', () => {
+      this.decreaseFontSize();
+    });
+
+    window.ipcRenderer.on('menu:zoom-reset', () => {
+      this.resetFontSize();
+    });
+
+    window.ipcRenderer.on('menu:split-horizontal', () => {
+      this.splitTerminal('horizontal');
+    });
+
+    window.ipcRenderer.on('menu:split-vertical', () => {
+      this.splitTerminal('vertical');
+    });
+
+    window.ipcRenderer.on('menu:close-split', () => {
+      this.closeSplit();
+    });
+
+    window.ipcRenderer.on('menu:check-updates', () => {
+      this.checkForUpdates(true);
+    });
+
+    window.ipcRenderer.on('menu:about', () => {
+      this.showAboutDialog();
     });
   }
 
@@ -308,6 +386,9 @@ class SSHClient {
   }
 
   setupEventListeners() {
+    // 侧边栏拖拽调整宽度
+    this.setupSidebarResizer();
+    
     // 侧边栏收起/展开
     document.getElementById('sidebarToggle').addEventListener('click', () => {
       this.toggleSidebar();
@@ -323,14 +404,6 @@ class SSHClient {
 
     document.getElementById('newGroupBtn').addEventListener('click', () => {
       this.createNewGroup();
-    });
-
-    document.getElementById('exportBtn').addEventListener('click', () => {
-      this.exportConfig();
-    });
-
-    document.getElementById('importBtn').addEventListener('click', () => {
-      this.importConfig();
     });
 
     document.getElementById('settingsBtn').addEventListener('click', () => {
@@ -1785,9 +1858,8 @@ class SSHClient {
       groupedSessions[group] = [];
     });
     
-    // 添加默认分组
-    const defaultGroupName = this.t('group.default');
-    groupedSessions[defaultGroupName] = [];
+    // 添加默认分组（使用空字符串作为内部标识）
+    groupedSessions[''] = [];
     
     // 分配会话到分组，并应用搜索过滤
     this.savedSessions.forEach(session => {
@@ -1799,7 +1871,8 @@ class SSHClient {
         }
       }
 
-      const group = session.group || this.t('group.default');
+      // 使用空字符串作为默认分组的内部标识
+      const group = session.group || '';
       if (!groupedSessions[group]) {
         groupedSessions[group] = [];
       }
@@ -1810,7 +1883,7 @@ class SSHClient {
     const groupTree = this.buildGroupTree(groupedSessions);
     
     // 渲染分组树
-    this.renderGroupTree(sessionList, groupTree, '');
+    this.renderGroupTree(sessionList, groupTree, '', 0);
   }
 
   // 构建分组树结构
@@ -1819,21 +1892,21 @@ class SSHClient {
     
     Object.keys(groupedSessions).forEach(groupPath => {
       const sessions = groupedSessions[groupPath];
-      const parts = groupPath.split('/').filter(p => p);
       
-      // 如果是默认分组（空路径）
-      if (parts.length === 0) {
-        if (!tree[groupPath]) {
-          tree[groupPath] = {
-            name: groupPath,
-            fullPath: groupPath,
-            children: {},
-            sessions: []
-          };
-        }
-        tree[groupPath].sessions = sessions;
+      // 如果是默认分组（空字符串）
+      if (groupPath === '') {
+        const defaultGroupName = this.t('group.default');
+        tree[defaultGroupName] = {
+          name: defaultGroupName,
+          fullPath: '', // 内部使用空字符串
+          children: {},
+          sessions: sessions,
+          isDefault: true // 标记为默认分组
+        };
         return;
       }
+      
+      const parts = groupPath.split('/').filter(p => p);
       
       // 构建路径上的所有节点
       let current = tree;
@@ -1843,7 +1916,8 @@ class SSHClient {
             name: part,
             fullPath: parts.slice(0, index + 1).join('/'),
             children: {},
-            sessions: []
+            sessions: [],
+            isDefault: false
           };
         }
         
@@ -1862,7 +1936,20 @@ class SSHClient {
 
   // 渲染分组树
   renderGroupTree(container, tree, parentPath, level = 0) {
-    Object.keys(tree).sort().forEach(key => {
+    // 自定义排序：默认分组始终在最后，其他按名称排序
+    const sortedKeys = Object.keys(tree).sort((a, b) => {
+      const nodeA = tree[a];
+      const nodeB = tree[b];
+      
+      // 默认分组排在最后
+      if (nodeA.isDefault) return 1;
+      if (nodeB.isDefault) return -1;
+      
+      // 其他按名称排序
+      return a.localeCompare(b, 'zh-CN');
+    });
+    
+    sortedKeys.forEach(key => {
       const node = tree[key];
       const groupName = node.name;
       const fullPath = node.fullPath;
@@ -1889,9 +1976,9 @@ class SSHClient {
           <span class="group-count">(${sessions.length})</span>
         </div>
         <div class="group-actions">
-          <button class="add-subgroup-btn" title="${this.t('group.addSubgroup')}" data-i18n-title="group.addSubgroup">+</button>
-          ${fullPath !== this.t('group.default') ? `<button class="rename-group-btn" data-i18n="group.rename">${this.t('group.rename')}</button>` : ''}
-          ${fullPath !== this.t('group.default') ? `<button class="delete-group-btn" data-i18n="group.delete">${this.t('group.delete')}</button>` : ''}
+          ${fullPath !== '' ? `<button class="add-subgroup-btn" title="${this.t('group.addSubgroup')}" data-i18n-title="group.addSubgroup">+</button>` : ''}
+          ${fullPath !== '' ? `<button class="rename-group-btn" data-i18n="group.rename">${this.t('group.rename')}</button>` : ''}
+          ${fullPath !== '' ? `<button class="delete-group-btn" data-i18n="group.delete">${this.t('group.delete')}</button>` : ''}
         </div>
       `;
 
@@ -1937,18 +2024,13 @@ class SSHClient {
 
       groupDiv.appendChild(groupHeader);
 
-      // 会话列表
+      // 会话列表和子分组容器
       if (!isCollapsed) {
-        const sessionsDiv = document.createElement('div');
-        sessionsDiv.className = 'group-sessions';
-        
-        if (sessions.length === 0 && !hasChildren) {
-          // 显示空状态
-          const emptyDiv = document.createElement('div');
-          emptyDiv.className = 'empty-group';
-          emptyDiv.textContent = this.t('group.empty');
-          sessionsDiv.appendChild(emptyDiv);
-        } else if (sessions.length > 0) {
+        // 先渲染会话
+        if (sessions.length > 0) {
+          const sessionsDiv = document.createElement('div');
+          sessionsDiv.className = 'group-sessions';
+          
           sessions.forEach(session => {
             const item = document.createElement('div');
             item.className = 'session-item';
@@ -1976,13 +2058,25 @@ class SSHClient {
 
             sessionsDiv.appendChild(item);
           });
+          
+          groupDiv.appendChild(sessionsDiv);
+        } else if (!hasChildren) {
+          // 只有在没有子分组且没有会话时才显示空状态
+          const sessionsDiv = document.createElement('div');
+          sessionsDiv.className = 'group-sessions';
+          const emptyDiv = document.createElement('div');
+          emptyDiv.className = 'empty-group';
+          emptyDiv.textContent = this.t('group.empty');
+          sessionsDiv.appendChild(emptyDiv);
+          groupDiv.appendChild(sessionsDiv);
         }
-
-        groupDiv.appendChild(sessionsDiv);
         
-        // 递归渲染子分组
-        if (hasChildren && !isCollapsed) {
+        // 再递归渲染子分组（子分组会添加到当前 groupDiv 的父容器中，但带有缩进）
+        if (hasChildren) {
+          // 将子分组添加到主容器，但在当前分组之后
+          container.appendChild(groupDiv);
           this.renderGroupTree(container, node.children, fullPath, level + 1);
+          return; // 提前返回，避免重复添加 groupDiv
         }
       }
 
@@ -1999,7 +2093,8 @@ class SSHClient {
       (subGroupName) => {
         if (!subGroupName) return;
         
-        const fullPath = parentPath ? `${parentPath}/${subGroupName}` : subGroupName;
+        // 如果父分组是默认分组（空字符串），子分组直接作为顶级分组
+        const fullPath = (parentPath && parentPath !== '') ? `${parentPath}/${subGroupName}` : subGroupName;
         
         if (this.sessionGroups.includes(fullPath)) {
           this.showAlert(this.t('group.alreadyExists'));
@@ -2308,7 +2403,78 @@ class SSHClient {
     );
   }
 
-  // 通知提示
+  // 设置侧边栏拖拽调整宽度
+  setupSidebarResizer() {
+    const resizer = document.getElementById('sidebarResizer');
+    const sidebar = document.getElementById('sidebar');
+    let isResizing = false;
+    let startX = 0;
+    let startWidth = 0;
+
+    // 加载保存的宽度
+    const savedWidth = localStorage.getItem('sidebarWidth');
+    if (savedWidth) {
+      sidebar.style.width = savedWidth + 'px';
+    }
+
+    resizer.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      startX = e.clientX;
+      startWidth = sidebar.offsetWidth;
+      resizer.classList.add('resizing');
+      document.body.style.cursor = 'ew-resize';
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+
+      const deltaX = e.clientX - startX;
+      const newWidth = startWidth + deltaX;
+      
+      // 限制宽度范围
+      const minWidth = 200;
+      const maxWidth = 600;
+      
+      if (newWidth >= minWidth && newWidth <= maxWidth) {
+        sidebar.style.width = newWidth + 'px';
+        
+        // 触发终端大小调整
+        this.terminals.forEach((terminalData) => {
+          if (terminalData.fitAddon && terminalData.terminal) {
+            setTimeout(() => {
+              terminalData.fitAddon.fit();
+              
+              const sessionId = terminalData.sessionId || Array.from(this.terminals.entries())
+                .find(([_, data]) => data === terminalData)?.[0];
+              
+              if (sessionId && terminalData.terminal.cols && terminalData.terminal.rows) {
+                window.electronAPI.ssh.resize(
+                  sessionId, 
+                  terminalData.terminal.cols, 
+                  terminalData.terminal.rows
+                );
+              }
+            }, 50);
+          }
+        });
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isResizing) {
+        isResizing = false;
+        resizer.classList.remove('resizing');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        
+        // 保存宽度
+        localStorage.setItem('sidebarWidth', sidebar.offsetWidth);
+      }
+    });
+  }
+
   // 切换侧边栏显示/隐藏
   toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
@@ -2357,6 +2523,12 @@ class SSHClient {
       notification.style.animation = 'slideInRight 0.3s ease-out reverse';
       setTimeout(() => notification.remove(), 300);
     }, 3000);
+  }
+
+  showAboutDialog() {
+    const version = document.getElementById('statusVersion').textContent.replace('v', '');
+    document.getElementById('aboutVersion').textContent = `v${version}`;
+    document.getElementById('aboutDialog').style.display = 'flex';
   }
 
   // SFTP 批量下载选中文件
