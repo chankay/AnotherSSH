@@ -1521,6 +1521,13 @@ class SSHClient {
           this.switchToSession(remainingSessions[0]);
         } else {
           this.activeSessionId = null;
+          // 清空状态栏
+          document.getElementById('statusConnectionText').textContent = this.t('status.notConnected');
+          document.querySelector('#statusConnection .status-icon').className = 'status-icon disconnected';
+          document.getElementById('statusSessionText').textContent = '';
+          document.getElementById('statusInfoText').textContent = '';
+          // 隐藏工具栏
+          document.getElementById('terminalToolbar').style.display = 'none';
         }
       }
     }, delay);
