@@ -4320,7 +4320,10 @@ class SSHClient {
     if (updateInfo.releaseNotes) {
       const notesContainer = document.getElementById('updateNotes');
       const notesContent = document.getElementById('updateNotesContent');
-      notesContent.innerHTML = updateInfo.releaseNotes;
+      
+      // 简单的 Markdown 转 HTML
+      const html = this.markdownToHtml(updateInfo.releaseNotes);
+      notesContent.innerHTML = html;
       notesContainer.style.display = 'block';
     } else {
       document.getElementById('updateNotes').style.display = 'none';
@@ -4348,6 +4351,45 @@ class SSHClient {
     newLaterBtn.addEventListener('click', () => {
       dialog.style.display = 'none';
     });
+  }
+
+  // 简单的 Markdown 转 HTML（用于更新说明）
+  markdownToHtml(markdown) {
+    if (!markdown) return '';
+    
+    let html = markdown
+      // 转义 HTML 特殊字符
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      
+      // 标题
+      .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+      .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^# (.+)$/gm, '<h2>$1</h2>')
+      
+      // 列表项
+      .replace(/^- (.+)$/gm, '<li>$1</li>')
+      
+      // 粗体
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      
+      // 代码
+      .replace(/`(.+?)`/g, '<code>$1</code>')
+      
+      // 换行
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/\n/g, '<br>');
+    
+    // 包装列表项
+    html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+    
+    // 包装段落
+    if (!html.startsWith('<h') && !html.startsWith('<ul>')) {
+      html = '<p>' + html + '</p>';
+    }
+    
+    return html;
   }
 
   // 设置更新状态显示
