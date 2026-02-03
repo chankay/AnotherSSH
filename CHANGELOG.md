@@ -9,6 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 待发布的更新将在这里记录
 
+## [1.0.12] - 2025-02-03
+
+### Added
+- 本地终端功能
+  - 支持在应用内直接打开本地 Shell（macOS/Windows/Linux）
+  - macOS/Linux：自动使用系统默认 Shell（zsh、bash 等）
+  - Windows：默认使用 cmd.exe
+  - 使用 node-pty 实现完整的 PTY 支持
+  - 侧边栏"本地终端"按钮（主按钮位置）
+  - 文件菜单添加本地终端选项（快捷键 Ctrl/Cmd+T）
+  - 本地终端标签使用绿色边框和 💻 图标区分
+  - 支持所有终端功能（搜索、分屏、字体调整等）
+  - 可以和 SSH 终端混合使用和分屏
+
+### Changed
+- Windows 本地终端默认改为 cmd.exe（PowerShell 使用较少）
+- 优化本地终端启动逻辑，Windows cmd.exe 自动发送回车显示提示符
+- 改进终端焦点管理，确保打开后立即可输入
+- 优化 switchToSession 方法，区分本地终端和 SSH 终端的 resize 调用
+
+### Fixed
+- 修复本地终端打开后光标不在终端内的问题
+- 修复 Windows cmd.exe 启动后空白的问题
+- 修复本地终端关闭后状态栏显示残留的问题
+- 修复本地终端 resize 时调用错误 API 的问题
+
+### Documentation
+- 更新 README.md 添加本地终端功能说明
+- 更新用户手册添加完整的"本地终端"章节
+  - 使用方法和快捷键
+  - 5 种使用场景
+  - 多终端和分屏支持
+  - 使用技巧和注意事项
+- 添加本地终端相关的常见问题解答
+
 ## [1.0.11] - 2025-02-03
 
 ### Added

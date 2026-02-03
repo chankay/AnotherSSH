@@ -1407,14 +1407,24 @@ class SSHClient {
           // 自动聚焦到终端
           terminalData.terminal.focus();
           
-          // fit 之后通知 SSH 终端大小
+          // fit 之后通知终端大小变化
           setTimeout(() => {
             if (terminalData.terminal.cols && terminalData.terminal.rows) {
-              window.electronAPI.ssh.resize(
-                sessionId,
-                terminalData.terminal.cols,
-                terminalData.terminal.rows
-              );
+              if (terminalData.type === 'local') {
+                // 本地终端
+                window.electronAPI.localShell.resize(
+                  sessionId,
+                  terminalData.terminal.cols,
+                  terminalData.terminal.rows
+                );
+              } else {
+                // SSH 终端
+                window.electronAPI.ssh.resize(
+                  sessionId,
+                  terminalData.terminal.cols,
+                  terminalData.terminal.rows
+                );
+              }
             }
           }, 50);
         }, 100);
@@ -5711,6 +5721,14 @@ class SSHClient {
       // 创建终端
       this.createLocalTerminal(sessionId, config);
       
+      // Windows cmd.exe 需要发送回车来显示提示符并激活输入
+      // 延迟发送，确保终端已经完全初始化
+      setTimeout(() => {
+        if (result.shell.toLowerCase().includes('cmd.exe')) {
+          window.electronAPI.localShell.write(sessionId, '\r');
+        }
+      }, 300);
+      
       // 监听本地 Shell 数据
       window.electronAPI.localShell.onData((data) => {
         if (data.sessionId === sessionId) {
@@ -5800,6 +5818,8 @@ class SSHClient {
         if (terminal.cols && terminal.rows) {
           window.electronAPI.localShell.resize(sessionId, terminal.cols, terminal.rows);
         }
+        // 再次确保焦点在终端上
+        terminal.focus();
       }, 100);
     }, 200);
 

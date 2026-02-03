@@ -10,7 +10,7 @@ class LocalShellManager {
   // 获取默认 Shell
   getDefaultShell() {
     if (os.platform() === 'win32') {
-      return 'powershell.exe';
+      return 'cmd.exe';
     }
     
     // macOS/Linux: 尝试多个可能的 shell
