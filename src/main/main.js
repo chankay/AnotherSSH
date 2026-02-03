@@ -583,82 +583,31 @@ ipcMain.handle('webdav:stopAutoSync', async (event) => {
 
 
 // 检查更新
+// 检查更新
 ipcMain.handle('check-updates', async () => {
   try {
     const https = require('https');
+    const currentVersion = app.getVersion();
     
-    return new Promise((resolve, reject) => {
-      // 设置 10 秒超时
-      const timeout = setTimeout(() => {
-        req.destroy();
-        resolve({
-          hasUpdate: false,
-          error: 'Request timeout'
-        });
-      }, 10000);
-      
-      const options = {
-        hostname: 'api.github.com',
-        path: '/repos/chankay/anotherssh/releases/latest',
-        method: 'GET',
-        headers: {
-          'User-Agent': 'AnotherSSH'
-        },
-        timeout: 10000
-      };
-      
-      const req = https.request(options, (res) => {
-        let data = '';
-        
-        res.on('data', (chunk) => {
-          data += chunk;
-        });
-        
-        res.on('end', () => {
-          clearTimeout(timeout);
-          try {
-            const release = JSON.parse(data);
-            const latestVersion = release.tag_name.replace('v', '');
-            const currentVersion = app.getVersion();
-            
-            // 比较版本号
-            const hasUpdate = compareVersions(currentVersion, latestVersion) === 1;
-            
-            resolve({
-              hasUpdate,
-              latestVersion,
-              currentVersion,
-              downloadUrl: release.html_url,
-              releaseNotes: release.body
-            });
-          } catch (error) {
-            resolve({
-              hasUpdate: false,
-              error: error.message
-            });
-          }
-        });
-      });
-      
-      req.on('error', (error) => {
-        clearTimeout(timeout);
-        resolve({
-          hasUpdate: false,
-          error: error.message
-        });
-      });
-      
-      req.on('timeout', () => {
-        clearTimeout(timeout);
-        req.destroy();
-        resolve({
-          hasUpdate: false,
-          error: 'Request timeout'
-        });
-      });
-      
-      req.end();
-    });
+    // 优先尝试 Gitee（国内用户快）
+    const giteeResult = await checkUpdateFromGitee(https, currentVersion);
+    if (giteeResult.success) {
+      return giteeResult.data;
+    }
+    
+    console.log('Gitee 检查失败，尝试 GitHub...', giteeResult.error);
+    
+    // Gitee 失败，降级到 GitHub
+    const githubResult = await checkUpdateFromGitHub(https, currentVersion);
+    if (githubResult.success) {
+      return githubResult.data;
+    }
+    
+    console.error('所有更新源都失败了');
+    return {
+      hasUpdate: false,
+      error: 'All update sources failed'
+    };
   } catch (error) {
     console.error('Check update failed:', error);
     return {
@@ -667,6 +616,165 @@ ipcMain.handle('check-updates', async () => {
     };
   }
 });
+
+// 从 Gitee 检查更新
+function checkUpdateFromGitee(https, currentVersion) {
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      req.destroy();
+      resolve({
+        success: false,
+        error: 'Gitee request timeout'
+      });
+    }, 5000); // Gitee 5秒超时
+    
+    const options = {
+      hostname: 'gitee.com',
+      path: '/api/v5/repos/chankay/AnotherSSH/releases/latest',
+      method: 'GET',
+      headers: {
+        'User-Agent': 'AnotherSSH'
+      },
+      timeout: 5000
+    };
+    
+    const req = https.request(options, (res) => {
+      let data = '';
+      
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      
+      res.on('end', () => {
+        clearTimeout(timeout);
+        try {
+          const release = JSON.parse(data);
+          const latestVersion = release.tag_name.replace('v', '');
+          
+          // 比较版本号
+          const hasUpdate = compareVersions(currentVersion, latestVersion) === 1;
+          
+          // Gitee 下载链接
+          const downloadUrl = `https://gitee.com/chankay/AnotherSSH/releases/${release.tag_name}`;
+          
+          resolve({
+            success: true,
+            data: {
+              hasUpdate,
+              latestVersion,
+              currentVersion,
+              downloadUrl,
+              releaseNotes: release.body,
+              source: 'gitee'
+            }
+          });
+        } catch (error) {
+          resolve({
+            success: false,
+            error: `Gitee parse error: ${error.message}`
+          });
+        }
+      });
+    });
+    
+    req.on('error', (error) => {
+      clearTimeout(timeout);
+      resolve({
+        success: false,
+        error: `Gitee request error: ${error.message}`
+      });
+    });
+    
+    req.on('timeout', () => {
+      clearTimeout(timeout);
+      req.destroy();
+      resolve({
+        success: false,
+        error: 'Gitee request timeout'
+      });
+    });
+    
+    req.end();
+  });
+}
+
+// 从 GitHub 检查更新
+function checkUpdateFromGitHub(https, currentVersion) {
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      req.destroy();
+      resolve({
+        success: false,
+        error: 'GitHub request timeout'
+      });
+    }, 10000); // GitHub 10秒超时
+    
+    const options = {
+      hostname: 'api.github.com',
+      path: '/repos/chankay/anotherssh/releases/latest',
+      method: 'GET',
+      headers: {
+        'User-Agent': 'AnotherSSH'
+      },
+      timeout: 10000
+    };
+    
+    const req = https.request(options, (res) => {
+      let data = '';
+      
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      
+      res.on('end', () => {
+        clearTimeout(timeout);
+        try {
+          const release = JSON.parse(data);
+          const latestVersion = release.tag_name.replace('v', '');
+          
+          // 比较版本号
+          const hasUpdate = compareVersions(currentVersion, latestVersion) === 1;
+          
+          resolve({
+            success: true,
+            data: {
+              hasUpdate,
+              latestVersion,
+              currentVersion,
+              downloadUrl: release.html_url,
+              releaseNotes: release.body,
+              source: 'github'
+            }
+          });
+        } catch (error) {
+          resolve({
+            success: false,
+            error: `GitHub parse error: ${error.message}`
+          });
+        }
+      });
+    });
+    
+    req.on('error', (error) => {
+      clearTimeout(timeout);
+      resolve({
+        success: false,
+        error: `GitHub request error: ${error.message}`
+      });
+    });
+    
+    req.on('timeout', () => {
+      clearTimeout(timeout);
+      req.destroy();
+      resolve({
+        success: false,
+        error: 'GitHub request timeout'
+      });
+    });
+    
+    req.end();
+  });
+}
 
 // 比较版本号
 function compareVersions(current, latest) {
