@@ -1440,7 +1440,17 @@ class SSHClient {
     const tab = document.getElementById(`tab-${sessionId}`);
     const statusSpan = tab?.querySelector('.tab-status');
     
-    // 更新连接状态
+    // 检查是否为本地终端
+    if (terminalData.type === 'local') {
+      // 本地终端：不显示连接状态图标
+      document.getElementById('statusConnectionText').textContent = '';
+      document.querySelector('#statusConnection .status-icon').className = 'status-icon';
+      document.getElementById('statusSessionText').textContent = config.name || '本地终端';
+      document.getElementById('statusInfoText').textContent = '';
+      return;
+    }
+    
+    // SSH 连接：更新连接状态
     if (statusSpan?.classList.contains('connected')) {
       document.getElementById('statusConnectionText').textContent = this.t('status.connected');
       document.querySelector('#statusConnection .status-icon').className = 'status-icon connected';
@@ -5838,7 +5848,6 @@ class SSHClient {
     tab.id = `tab-${sessionId}`;
     
     tab.innerHTML = `
-      <span class="tab-status connected" title="本地终端"></span>
       <span class="tab-name">${config.name}</span>
       <span class="tab-close" data-session="${sessionId}">✕</span>
     `;
