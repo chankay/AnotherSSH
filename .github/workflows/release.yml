@@ -228,7 +228,8 @@ jobs:
                 if [ -f "$file" ]; then
                   filename=$(basename "$file")
                   filesize=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file")
-                  echo "Uploading ${filename} (${filesize} bytes)..."
+                  filesize_mb=$(echo "scale=2; ${filesize}/1024/1024" | bc)
+                  echo "Uploading ${filename} (${filesize_mb}MB)..."
                   
                   UPLOAD_RESPONSE=$(curl -k -s -w "\n%{http_code}" -X POST \
                     "https://gitee.com/api/v5/repos/chankay/AnotherSSH/releases/${RELEASE_ID}/attach_files" \
@@ -236,11 +237,13 @@ jobs:
                     -F "file=@${file}")
                   
                   UPLOAD_CODE=$(echo "$UPLOAD_RESPONSE" | tail -n1)
+                  UPLOAD_BODY=$(echo "$UPLOAD_RESPONSE" | sed '$d')
                   
                   if [ "$UPLOAD_CODE" = "201" ]; then
                     echo "✅ Uploaded ${filename}"
                   else
                     echo "⚠️  Failed to upload ${filename} (HTTP ${UPLOAD_CODE})"
+                    echo "Response: ${UPLOAD_BODY}"
                   fi
                 fi
               done
