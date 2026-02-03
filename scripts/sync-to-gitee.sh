@@ -12,11 +12,14 @@ GITEE_TOKEN=${2}
 if [ -z "$VERSION" ] || [ -z "$GITEE_TOKEN" ]; then
   echo "用法: $0 <version> <gitee_token>"
   echo "示例: $0 1.0.10 your_gitee_token"
+  echo "       $0 v1.0.10 your_gitee_token"
   exit 1
 fi
 
-TAG_NAME="v${VERSION}"
-RELEASE_NAME="v${VERSION}"
+# 移除版本号前的 v 前缀（如果有）
+VERSION_NUM="${VERSION#v}"
+TAG_NAME="v${VERSION_NUM}"
+RELEASE_NAME="v${VERSION_NUM}"
 
 echo "=========================================="
 echo "同步 ${TAG_NAME} 到 Gitee"
@@ -25,8 +28,6 @@ echo ""
 
 # 1. 提取 CHANGELOG
 echo "📝 提取 CHANGELOG..."
-# 移除版本号前的 v 前缀（如果有）
-VERSION_NUM="${VERSION#v}"
 START_LINE=$(grep -n "^## \[${VERSION_NUM}\] -" CHANGELOG.md | cut -d: -f1)
 
 if [ -z "$START_LINE" ]; then
