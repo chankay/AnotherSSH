@@ -4291,7 +4291,8 @@ class SSHClient {
       const updateInfo = await window.electronAPI.checkUpdates();
       
       if (updateInfo && updateInfo.hasUpdate) {
-        // 发现新版本
+        // 发现新版本，显示弹窗
+        this.showUpdateDialog(updateInfo);
         this.setUpdateStatus('available', updateInfo);
       } else {
         // 已是最新版本
@@ -4304,6 +4305,49 @@ class SSHClient {
       // 静默失败，不影响用户体验
       this.setUpdateStatus('error');
     }
+  }
+
+  // 显示更新对话框
+  async showUpdateDialog(updateInfo) {
+    const dialog = document.getElementById('updateDialog');
+    const currentVersion = await window.electronAPI.getAppVersion();
+    
+    // 设置版本号
+    document.getElementById('updateCurrentVersion').textContent = `v${currentVersion}`;
+    document.getElementById('updateLatestVersion').textContent = updateInfo.latestVersion;
+    
+    // 如果有更新说明，显示
+    if (updateInfo.releaseNotes) {
+      const notesContainer = document.getElementById('updateNotes');
+      const notesContent = document.getElementById('updateNotesContent');
+      notesContent.innerHTML = updateInfo.releaseNotes;
+      notesContainer.style.display = 'block';
+    } else {
+      document.getElementById('updateNotes').style.display = 'none';
+    }
+    
+    // 显示对话框
+    dialog.style.display = 'flex';
+    
+    // 绑定按钮事件（只绑定一次）
+    const downloadBtn = document.getElementById('updateDownloadBtn');
+    const laterBtn = document.getElementById('updateLaterBtn');
+    
+    // 移除旧的事件监听器
+    const newDownloadBtn = downloadBtn.cloneNode(true);
+    const newLaterBtn = laterBtn.cloneNode(true);
+    downloadBtn.parentNode.replaceChild(newDownloadBtn, downloadBtn);
+    laterBtn.parentNode.replaceChild(newLaterBtn, laterBtn);
+    
+    // 添加新的事件监听器
+    newDownloadBtn.addEventListener('click', () => {
+      window.electronAPI.openExternal(updateInfo.downloadUrl);
+      dialog.style.display = 'none';
+    });
+    
+    newLaterBtn.addEventListener('click', () => {
+      dialog.style.display = 'none';
+    });
   }
 
   // 设置更新状态显示
@@ -4324,10 +4368,8 @@ class SSHClient {
         statusUpdate.style.display = 'inline-flex';
         statusUpdate.style.cursor = 'pointer';
         statusUpdate.onclick = () => {
-          window.electronAPI.openExternal(updateInfo.downloadUrl);
+          this.showUpdateDialog(updateInfo);
         };
-        // 同时显示通知
-        this.showNotification(`${this.t('status.newVersionAvailable', '发现新版本')} v${updateInfo.latestVersion}`, 'success');
         break;
         
       case 'latest':
@@ -4354,9 +4396,8 @@ class SSHClient {
       
       if (updateInfo && updateInfo.hasUpdate) {
         this.setUpdateStatus('available', updateInfo);
-        if (manual) {
-          this.showNotification(`${this.t('notify.newVersionFound', '发现新版本')} v${updateInfo.latestVersion}`, 'success');
-        }
+        // 手动检查时也显示弹窗
+        this.showUpdateDialog(updateInfo);
       } else if (manual) {
         // 手动检查时，如果没有更新则提示
         this.showNotification('notify.alreadyLatest', 'success');

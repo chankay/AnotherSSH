@@ -425,6 +425,15 @@ const translations = {
     'input.groupName': '分组名称',
     'input.folderName': '文件夹名称',
     'input.rename': '重命名',
+    
+    // 更新对话框
+    'update.title': '发现新版本',
+    'update.currentVersion': '当前版本',
+    'update.latestVersion': '最新版本',
+    'update.description': '建议您更新到最新版本以获得更好的体验和新功能。',
+    'update.releaseNotes': '更新内容',
+    'update.later': '稍后提醒',
+    'update.download': '立即下载',
   },
   
   'en-US': {
@@ -851,6 +860,15 @@ const translations = {
     'input.groupName': 'Group Name',
     'input.folderName': 'Folder Name',
     'input.rename': 'Rename',
+    
+    // Update Dialog
+    'update.title': 'New Version Available',
+    'update.currentVersion': 'Current Version',
+    'update.latestVersion': 'Latest Version',
+    'update.description': 'We recommend updating to the latest version for better experience and new features.',
+    'update.releaseNotes': 'Release Notes',
+    'update.later': 'Remind Me Later',
+    'update.download': 'Download Now',
   }
 };
 
