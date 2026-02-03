@@ -25,11 +25,13 @@ echo ""
 
 # 1. 提取 CHANGELOG
 echo "📝 提取 CHANGELOG..."
-START_LINE=$(grep -n "^## \[${VERSION}\] -" CHANGELOG.md | cut -d: -f1)
+# 移除版本号前的 v 前缀（如果有）
+VERSION_NUM="${VERSION#v}"
+START_LINE=$(grep -n "^## \[${VERSION_NUM}\] -" CHANGELOG.md | cut -d: -f1)
 
 if [ -z "$START_LINE" ]; then
-  echo "⚠️  未找到版本 ${VERSION} 的 CHANGELOG，使用默认描述"
-  CHANGELOG="Release version $VERSION"
+  echo "⚠️  未找到版本 ${VERSION_NUM} 的 CHANGELOG，使用默认描述"
+  CHANGELOG="Release version ${VERSION_NUM}"
 else
   NEXT_LINE=$(tail -n +$((START_LINE + 1)) CHANGELOG.md | grep -n "^## \[" | head -1 | cut -d: -f1)
   
@@ -43,7 +45,7 @@ else
   CHANGELOG=$(echo "$CHANGELOG" | sed '/./,$!d' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')
   
   if [ -z "$CHANGELOG" ]; then
-    CHANGELOG="Release version $VERSION"
+    CHANGELOG="Release version ${VERSION_NUM}"
   fi
 fi
 
@@ -96,13 +98,30 @@ echo "📥 从 GitHub 下载 Release 文件..."
 mkdir -p /tmp/anotherssh-release
 cd /tmp/anotherssh-release
 
-# 获取 GitHub Release 信息
-GITHUB_RELEASE=$(curl -s "https://api.github.com/repos/chankay/AnotherSSH/releases/tags/${TAG_NAME}")
-ASSETS=$(echo "$GITHUB_RELEASE" | jq -r '.assets[] | "\(.name)|\(.browser_download_url)"')
+# 获取 GitHub Release 信息，最多重试 3 次
+MAX_RETRIES=3
+RETRY_COUNT=0
+GITHUB_RELEASE=""
+
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+  GITHUB_RELEASE=$(curl -s "https://api.github.com/repos/chankay/AnotherSSH/releases/tags/${TAG_NAME}")
+  ASSETS=$(echo "$GITHUB_RELEASE" | jq -r '.assets[]? | "\(.name)|\(.browser_download_url)"' 2>/dev/null)
+  
+  if [ -n "$ASSETS" ]; then
+    break
+  fi
+  
+  RETRY_COUNT=$((RETRY_COUNT + 1))
+  if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+    echo "  ⏳ GitHub Release 文件尚未准备好，等待 10 秒后重试 ($RETRY_COUNT/$MAX_RETRIES)..."
+    sleep 10
+  fi
+done
 
 if [ -z "$ASSETS" ]; then
   echo "⚠️  GitHub Release 中没有找到文件"
   echo "请确保 GitHub Release 已创建并包含文件"
+  echo "您可以稍后手动运行此脚本重试"
   exit 1
 fi
 
