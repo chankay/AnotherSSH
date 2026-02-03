@@ -1845,13 +1845,37 @@ class SSHClient {
     if (result.success && result.sessions) {
       this.savedSessions = result.sessions;
       
-      // 提取所有分组
-      this.sessionGroups = [...new Set(this.savedSessions
+      // 从 localStorage 加载分组列表（包括空分组）
+      const savedGroups = localStorage.getItem('sessionGroups');
+      if (savedGroups) {
+        try {
+          this.sessionGroups = JSON.parse(savedGroups);
+        } catch (e) {
+          console.error('Failed to parse sessionGroups:', e);
+          this.sessionGroups = [];
+        }
+      } else {
+        this.sessionGroups = [];
+      }
+      
+      // 从会话中提取分组，合并到现有分组列表
+      const groupsFromSessions = [...new Set(this.savedSessions
         .map(s => s.group)
         .filter(g => g))];
       
+      // 合并分组（去重）
+      this.sessionGroups = [...new Set([...this.sessionGroups, ...groupsFromSessions])];
+      
+      // 保存合并后的分组列表
+      this.saveSessionGroups();
+      
       this.renderSessionList();
     }
+  }
+
+  // 保存分组列表到 localStorage
+  saveSessionGroups() {
+    localStorage.setItem('sessionGroups', JSON.stringify(this.sessionGroups));
   }
 
   // 保存折叠状态到 localStorage
@@ -2193,6 +2217,7 @@ class SSHClient {
         }
 
         this.sessionGroups.push(fullPath);
+        this.saveSessionGroups();
         this.renderSessionList();
       }
     );
@@ -2208,6 +2233,7 @@ class SSHClient {
       }
 
       this.sessionGroups.push(groupName);
+      this.saveSessionGroups();
       this.renderSessionList();
     });
   }
@@ -2235,6 +2261,7 @@ class SSHClient {
       }
 
       await window.electronAPI.session.save(this.savedSessions);
+      this.saveSessionGroups();
       this.renderSessionList();
     });
   }
@@ -2277,6 +2304,7 @@ class SSHClient {
           );
 
           await window.electronAPI.session.save(this.savedSessions);
+          this.saveSessionGroups();
           this.renderSessionList();
         }
       );
@@ -2285,6 +2313,7 @@ class SSHClient {
       this.sessionGroups = this.sessionGroups.filter(g => 
         g !== groupName && !g.startsWith(groupName + '/')
       );
+      this.saveSessionGroups();
       this.renderSessionList();
     }
   }
@@ -2379,6 +2408,7 @@ class SSHClient {
 
     // 保存更改
     await window.electronAPI.session.save(this.savedSessions);
+    this.saveSessionGroups();
     
     // 重新渲染
     this.renderSessionList();
