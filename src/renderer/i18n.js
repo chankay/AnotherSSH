@@ -21,7 +21,7 @@ const translations = {
     // 侧边栏
     'sidebar.title': '会话管理',
     'sidebar.newSession': '新建连接',
-    'sidebar.newLocalShell': '💻 本地终端',
+    'sidebar.newLocalShell': '本地终端',
     'sidebar.newGroup': '新建分组',
     'sidebar.export': '导出配置',
     'sidebar.import': '导入配置',
@@ -457,7 +457,7 @@ const translations = {
     // Sidebar
     'sidebar.title': 'Session Manager',
     'sidebar.newSession': 'New Connection',
-    'sidebar.newLocalShell': '💻 Local Shell',
+    'sidebar.newLocalShell': 'Local Shell',
     'sidebar.newGroup': 'New Group',
     'sidebar.export': 'Export Config',
     'sidebar.import': 'Import Config',

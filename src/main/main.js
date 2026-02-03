@@ -43,7 +43,7 @@ function createMenu() {
       label: '文件',
       submenu: [
         { 
-          label: '💻 本地终端', 
+          label: '本地终端', 
           accelerator: 'CmdOrCtrl+T',
           click: () => mainWindow.webContents.send('menu:new-local-shell')
         },
