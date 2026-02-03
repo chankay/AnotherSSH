@@ -175,6 +175,11 @@ class SSHClient {
       
       // 异步检查主密码（不阻塞界面显示）
       this.checkMasterPassword();
+      
+      // 延迟 2 秒后自动检查更新（不阻塞启动）
+      setTimeout(() => {
+        this.autoCheckUpdates();
+      }, 2000);
     }, 0);
   }
 
@@ -4269,19 +4274,77 @@ class SSHClient {
     }
   }
 
-  // 检查更新
-  async checkForUpdates(manual = false) {
+  // 自动检查更新（启动时调用）
+  async autoCheckUpdates() {
     try {
-      // 如果不是手动检查，则检查上次检查时间，每天只检查一次
-      if (!manual) {
-        const lastCheck = localStorage.getItem('lastUpdateCheck');
-        const now = Date.now();
-        
-        if (lastCheck && now - parseInt(lastCheck) < 24 * 60 * 60 * 1000) {
-          return;
-        }
+      // 检查上次检查时间，每天只自动检查一次
+      const lastCheck = localStorage.getItem('lastUpdateCheck');
+      const now = Date.now();
+      
+      if (lastCheck && now - parseInt(lastCheck) < 24 * 60 * 60 * 1000) {
+        return; // 24小时内已检查过，跳过
       }
       
+      // 显示检查中状态
+      this.setUpdateStatus('checking');
+      
+      const updateInfo = await window.electronAPI.checkUpdates();
+      
+      if (updateInfo && updateInfo.hasUpdate) {
+        // 发现新版本
+        this.setUpdateStatus('available', updateInfo);
+      } else {
+        // 已是最新版本
+        this.setUpdateStatus('latest');
+      }
+      
+      localStorage.setItem('lastUpdateCheck', Date.now().toString());
+    } catch (error) {
+      console.error('Auto check updates failed:', error);
+      // 静默失败，不影响用户体验
+      this.setUpdateStatus('error');
+    }
+  }
+
+  // 设置更新状态显示
+  setUpdateStatus(status, updateInfo = null) {
+    const statusUpdate = document.getElementById('statusUpdate');
+    const statusUpdateText = document.getElementById('statusUpdateText');
+    
+    switch (status) {
+      case 'checking':
+        statusUpdateText.textContent = this.t('status.checkingUpdates', '检查更新中...');
+        statusUpdate.style.display = 'inline-flex';
+        statusUpdate.style.cursor = 'default';
+        statusUpdate.onclick = null;
+        break;
+        
+      case 'available':
+        statusUpdateText.textContent = `🎉 ${this.t('status.newVersionAvailable', '发现新版本')} v${updateInfo.latestVersion}`;
+        statusUpdate.style.display = 'inline-flex';
+        statusUpdate.style.cursor = 'pointer';
+        statusUpdate.onclick = () => {
+          window.electronAPI.openExternal(updateInfo.downloadUrl);
+        };
+        // 同时显示通知
+        this.showNotification(`${this.t('status.newVersionAvailable', '发现新版本')} v${updateInfo.latestVersion}`, 'success');
+        break;
+        
+      case 'latest':
+        // 已是最新版本，隐藏状态（不打扰用户）
+        statusUpdate.style.display = 'none';
+        break;
+        
+      case 'error':
+        // 检查失败，隐藏状态（不打扰用户）
+        statusUpdate.style.display = 'none';
+        break;
+    }
+  }
+
+  // 检查更新（手动触发）
+  async checkForUpdates(manual = false) {
+    try {
       // 手动检查时显示检查中状态
       if (manual) {
         this.showNotification('notify.checkingUpdates', 'info');
@@ -4290,9 +4353,9 @@ class SSHClient {
       const updateInfo = await window.electronAPI.checkUpdates();
       
       if (updateInfo && updateInfo.hasUpdate) {
-        this.showUpdateNotification(updateInfo);
+        this.setUpdateStatus('available', updateInfo);
         if (manual) {
-          this.showNotification(`发现新版本 v${updateInfo.latestVersion}`, 'success');
+          this.showNotification(`${this.t('notify.newVersionFound', '发现新版本')} v${updateInfo.latestVersion}`, 'success');
         }
       } else if (manual) {
         // 手动检查时，如果没有更新则提示
@@ -4306,21 +4369,6 @@ class SSHClient {
         this.showNotification('notify.checkUpdateFailed', 'error');
       }
     }
-  }
-
-  // 显示更新提示
-  showUpdateNotification(updateInfo) {
-    const statusUpdate = document.getElementById('statusUpdate');
-    const statusUpdateText = document.getElementById('statusUpdateText');
-    
-    statusUpdateText.textContent = `🎉 发现新版本 v${updateInfo.latestVersion}`;
-    statusUpdate.style.display = 'inline-flex';
-    
-    // 点击打开下载页面
-    statusUpdate.style.cursor = 'pointer';
-    statusUpdate.onclick = () => {
-      window.electronAPI.openExternal(updateInfo.downloadUrl);
-    };
   }
 
   // ========== 日志管理相关方法 ==========

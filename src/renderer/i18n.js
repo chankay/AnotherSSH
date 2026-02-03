@@ -262,6 +262,8 @@ const translations = {
     'status.connecting': '连接中',
     'status.reconnecting': '重连中',
     'status.version': '版本',
+    'status.checkingUpdates': '检查更新中...',
+    'status.newVersionAvailable': '发现新版本',
     
     // 通知消息
     'notify.connectSuccess': '连接成功',
@@ -315,6 +317,7 @@ const translations = {
     'notify.checkingUpdates': '正在检查更新...',
     'notify.alreadyLatest': '当前已是最新版本',
     'notify.checkUpdateFailed': '检查更新失败，请稍后重试',
+    'notify.newVersionFound': '发现新版本',
     'notify.loadLogsFailed': '加载日志失败',
     'notify.readLogFailed': '读取日志失败',
     'notify.showLogFailed': '显示日志失败',
@@ -685,6 +688,8 @@ const translations = {
     'status.connecting': 'Connecting',
     'status.reconnecting': 'Reconnecting',
     'status.version': 'Version',
+    'status.checkingUpdates': 'Checking for updates...',
+    'status.newVersionAvailable': 'New version available',
     
     // Notifications
     'notify.connectSuccess': 'Connected successfully',
@@ -738,6 +743,7 @@ const translations = {
     'notify.checkingUpdates': 'Checking for updates...',
     'notify.alreadyLatest': 'Already using the latest version',
     'notify.checkUpdateFailed': 'Failed to check for updates, please try again later',
+    'notify.newVersionFound': 'New version found',
     'notify.loadLogsFailed': 'Failed to load logs',
     'notify.readLogFailed': 'Failed to read log',
     'notify.showLogFailed': 'Failed to show log',
