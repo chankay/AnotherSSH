@@ -125,13 +125,33 @@ body {
 
 .header-actions {
   display: flex;
-  gap: 5px;
+  gap: 8px;
 }
 
-.header-actions button {
+.header-actions .btn-action {
   flex: 1;
-  font-size: 12px;
-  padding: 6px 10px;
+  font-size: 13px;
+  padding: 8px 12px;
+  background: transparent;
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.header-actions .btn-action:hover {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(14, 99, 156, 0.3);
+}
+
+.header-actions .btn-action:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(14, 99, 156, 0.2);
 }
 
 .session-list {
