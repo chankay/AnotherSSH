@@ -1969,6 +1969,7 @@ class SSHClient {
       
       const groupHeader = document.createElement('div');
       groupHeader.className = 'group-header';
+      groupHeader.dataset.groupPath = fullPath;
       groupHeader.innerHTML = `
         <div class="group-title">
           <span class="group-toggle ${isCollapsed ? 'collapsed' : ''}">${hasChildren || sessions.length > 0 ? '▼' : '•'}</span>
@@ -1981,6 +1982,39 @@ class SSHClient {
           ${fullPath !== '' ? `<button class="delete-group-btn" data-i18n="group.delete">${this.t('group.delete')}</button>` : ''}
         </div>
       `;
+
+      // 拖拽悬停在分组上
+      groupHeader.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'move';
+        groupHeader.classList.add('drag-over');
+      });
+
+      // 拖拽离开分组
+      groupHeader.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // 只有当真正离开分组头部时才移除样式
+        if (e.target === groupHeader || !groupHeader.contains(e.relatedTarget)) {
+          groupHeader.classList.remove('drag-over');
+        }
+      });
+
+      // 放置到分组
+      groupHeader.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        groupHeader.classList.remove('drag-over');
+        
+        const sessionId = e.dataTransfer.getData('application/session-id');
+        const currentGroup = e.dataTransfer.getData('application/current-group');
+        const targetGroup = fullPath;
+        
+        if (sessionId && currentGroup !== targetGroup) {
+          this.moveSessionToGroup(sessionId, targetGroup);
+        }
+      });
 
       // 切换折叠状态
       groupHeader.addEventListener('click', (e) => {
@@ -2034,6 +2068,9 @@ class SSHClient {
           sessions.forEach(session => {
             const item = document.createElement('div');
             item.className = 'session-item';
+            item.draggable = true; // 使会话项可拖拽
+            item.dataset.sessionId = session.id;
+            item.dataset.currentGroup = fullPath;
             
             // 高亮搜索结果
             if (this.searchQuery) {
@@ -2043,6 +2080,25 @@ class SSHClient {
             item.innerHTML = `
               <span>${session.name || session.username + '@' + session.host}</span>
             `;
+
+            // 拖拽开始
+            item.addEventListener('dragstart', (e) => {
+              e.stopPropagation();
+              item.classList.add('dragging');
+              e.dataTransfer.effectAllowed = 'move';
+              e.dataTransfer.setData('text/plain', session.id);
+              e.dataTransfer.setData('application/session-id', session.id);
+              e.dataTransfer.setData('application/current-group', fullPath);
+            });
+
+            // 拖拽结束
+            item.addEventListener('dragend', (e) => {
+              item.classList.remove('dragging');
+              // 移除所有拖拽悬停效果
+              document.querySelectorAll('.drag-over').forEach(el => {
+                el.classList.remove('drag-over');
+              });
+            });
 
             // 双击快速连接
             item.addEventListener('dblclick', () => {
@@ -2196,6 +2252,42 @@ class SSHClient {
       );
       this.renderSessionList();
     }
+  }
+
+  // 移动会话到指定分组
+  async moveSessionToGroup(sessionId, targetGroup) {
+    const session = this.savedSessions.find(s => s.id === sessionId);
+    if (!session) {
+      console.error('Session not found:', sessionId);
+      return;
+    }
+
+    const oldGroup = session.group || this.t('group.default');
+    const newGroup = targetGroup || this.t('group.default');
+    
+    // 如果目标分组和当前分组相同，不做任何操作
+    if (session.group === targetGroup) {
+      return;
+    }
+
+    // 更新会话的分组
+    session.group = targetGroup;
+
+    // 保存到存储
+    await window.electronAPI.session.save(this.savedSessions);
+    
+    // 重新渲染列表
+    this.renderSessionList();
+
+    // 显示通知
+    const sessionName = session.name || `${session.username}@${session.host}`;
+    this.showNotification(
+      this.t('group.moveSuccess')
+        .replace('{session}', sessionName)
+        .replace('{from}', oldGroup)
+        .replace('{to}', newGroup),
+      'success'
+    );
   }
 
   // 自定义对话框方法

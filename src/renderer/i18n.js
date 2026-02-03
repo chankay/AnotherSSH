@@ -373,6 +373,7 @@ const translations = {
     'group.addSubgroup': '添加子分组',
     'group.addSubgroupTitle': '添加子分组',
     'group.addSubgroupPrompt': '请输入子分组名称:',
+    'group.moveSuccess': '已将 "{session}" 从 "{from}" 移动到 "{to}"',
     
     // 会话操作
     'session.deleteTitle': '删除会话',
@@ -795,6 +796,7 @@ const translations = {
     'group.addSubgroup': 'Add Subgroup',
     'group.addSubgroupTitle': 'Add Subgroup',
     'group.addSubgroupPrompt': 'Enter subgroup name:',
+    'group.moveSuccess': 'Moved "{session}" from "{from}" to "{to}"',
     
     // Session Operations
     'session.deleteTitle': 'Delete Session',

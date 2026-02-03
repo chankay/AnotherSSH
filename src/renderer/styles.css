@@ -162,6 +162,16 @@ body {
   transform: translateX(2px);
 }
 
+/* 拖拽状态 */
+.session-item.dragging {
+  opacity: 0.5;
+  cursor: move;
+}
+
+.session-item[draggable="true"] {
+  cursor: move;
+}
+
 .main-content {
   flex: 1;
   min-width: 0;
@@ -1501,11 +1511,19 @@ body.light-theme .reconnect-message {
   border-radius: 3px;
   cursor: pointer;
   user-select: none;
-  transition: background 0.2s;
+  transition: all 0.2s;
+  border: 2px solid transparent;
 }
 
 .group-header:hover {
   background: #4e4e52;
+}
+
+/* 拖拽悬停在分组上 */
+.group-header.drag-over {
+  background: #0e639c;
+  border-color: #1177bb;
+  box-shadow: 0 0 8px rgba(14, 99, 156, 0.5);
 }
 
 .group-title {
