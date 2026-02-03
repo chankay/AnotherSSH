@@ -1998,6 +1998,12 @@ class SSHClient {
       const groupHeader = document.createElement('div');
       groupHeader.className = 'group-header';
       groupHeader.dataset.groupPath = fullPath;
+      
+      // 非默认分组可以拖拽
+      if (fullPath !== '') {
+        groupHeader.draggable = true;
+      }
+      
       groupHeader.innerHTML = `
         <div class="group-title">
           <span class="group-toggle ${isCollapsed ? 'collapsed' : ''}">${hasChildren || sessions.length > 0 ? '▼' : '•'}</span>
@@ -2005,6 +2011,24 @@ class SSHClient {
           <span class="group-count">(${sessions.length})</span>
         </div>
       `;
+
+      // 分组拖拽开始
+      if (fullPath !== '') {
+        groupHeader.addEventListener('dragstart', (e) => {
+          e.stopPropagation();
+          groupHeader.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('application/group-path', fullPath);
+          e.dataTransfer.setData('text/plain', fullPath);
+        });
+
+        groupHeader.addEventListener('dragend', (e) => {
+          groupHeader.classList.remove('dragging');
+          document.querySelectorAll('.drag-over').forEach(el => {
+            el.classList.remove('drag-over');
+          });
+        });
+      }
 
       // 拖拽悬停在分组上
       groupHeader.addEventListener('dragover', (e) => {
@@ -2031,11 +2055,19 @@ class SSHClient {
         groupHeader.classList.remove('drag-over');
         
         const sessionId = e.dataTransfer.getData('application/session-id');
-        const currentGroup = e.dataTransfer.getData('application/current-group');
+        const draggedGroupPath = e.dataTransfer.getData('application/group-path');
         const targetGroup = fullPath;
         
-        if (sessionId && currentGroup !== targetGroup) {
-          this.moveSessionToGroup(sessionId, targetGroup);
+        // 处理会话拖拽
+        if (sessionId) {
+          const currentGroup = e.dataTransfer.getData('application/current-group');
+          if (currentGroup !== targetGroup) {
+            this.moveSessionToGroup(sessionId, targetGroup);
+          }
+        }
+        // 处理分组拖拽
+        else if (draggedGroupPath) {
+          this.moveGroupToGroup(draggedGroupPath, targetGroup);
         }
       });
 
@@ -2291,6 +2323,68 @@ class SSHClient {
         .replace('{to}', newGroup),
       'success'
     );
+  }
+
+  // 移动分组到另一个分组（作为子分组）
+  async moveGroupToGroup(sourceGroupPath, targetGroupPath) {
+    // 不能移动到自己
+    if (sourceGroupPath === targetGroupPath) {
+      return;
+    }
+
+    // 不能移动到自己的子分组
+    if (targetGroupPath.startsWith(sourceGroupPath + '/')) {
+      this.showNotification('不能移动到自己的子分组', 'error');
+      return;
+    }
+
+    // 获取源分组的名称（最后一段）
+    const sourceGroupName = sourceGroupPath.split('/').pop();
+    
+    // 构建新的分组路径
+    const newGroupPath = targetGroupPath ? `${targetGroupPath}/${sourceGroupName}` : sourceGroupName;
+
+    // 检查目标位置是否已存在同名分组
+    if (this.sessionGroups.includes(newGroupPath)) {
+      this.showNotification('目标位置已存在同名分组', 'error');
+      return;
+    }
+
+    // 更新所有相关的分组路径
+    const updatedGroups = [];
+    this.sessionGroups.forEach(group => {
+      if (group === sourceGroupPath) {
+        // 更新源分组本身
+        updatedGroups.push(newGroupPath);
+      } else if (group.startsWith(sourceGroupPath + '/')) {
+        // 更新源分组的所有子分组
+        const subPath = group.substring(sourceGroupPath.length + 1);
+        updatedGroups.push(`${newGroupPath}/${subPath}`);
+      } else {
+        // 其他分组保持不变
+        updatedGroups.push(group);
+      }
+    });
+    this.sessionGroups = updatedGroups;
+
+    // 更新所有会话的分组路径
+    this.savedSessions.forEach(session => {
+      if (session.group === sourceGroupPath) {
+        session.group = newGroupPath;
+      } else if (session.group && session.group.startsWith(sourceGroupPath + '/')) {
+        const subPath = session.group.substring(sourceGroupPath.length + 1);
+        session.group = `${newGroupPath}/${subPath}`;
+      }
+    });
+
+    // 保存更改
+    await window.electronAPI.session.save(this.savedSessions);
+    
+    // 重新渲染
+    this.renderSessionList();
+
+    // 显示通知
+    this.showNotification(`已将分组 "${sourceGroupPath}" 移动到 "${targetGroupPath || '根目录'}"`, 'success');
   }
 
   // 自定义对话框方法
