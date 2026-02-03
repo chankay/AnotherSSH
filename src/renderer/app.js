@@ -5838,7 +5838,7 @@ class SSHClient {
     tab.id = `tab-${sessionId}`;
     
     tab.innerHTML = `
-      <span class="tab-status connected" title="本地终端">💻</span>
+      <span class="tab-status connected" title="本地终端"></span>
       <span class="tab-name">${config.name}</span>
       <span class="tab-close" data-session="${sessionId}">✕</span>
     `;
