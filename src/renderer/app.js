@@ -2004,11 +2004,6 @@ class SSHClient {
           <span class="group-name">${groupName}</span>
           <span class="group-count">(${sessions.length})</span>
         </div>
-        <div class="group-actions">
-          ${fullPath !== '' ? `<button class="add-subgroup-btn" title="${this.t('group.addSubgroup')}" data-i18n-title="group.addSubgroup">+</button>` : ''}
-          ${fullPath !== '' ? `<button class="rename-group-btn" data-i18n="group.rename">${this.t('group.rename')}</button>` : ''}
-          ${fullPath !== '' ? `<button class="delete-group-btn" data-i18n="group.delete">${this.t('group.delete')}</button>` : ''}
-        </div>
       `;
 
       // 拖拽悬停在分组上
@@ -2046,8 +2041,6 @@ class SSHClient {
 
       // 切换折叠状态
       groupHeader.addEventListener('click', (e) => {
-        if (e.target.closest('.group-actions')) return;
-        
         if (this.collapsedGroups.has(fullPath)) {
           this.collapsedGroups.delete(fullPath);
         } else {
@@ -2057,30 +2050,12 @@ class SSHClient {
         this.renderSessionList();
       });
 
-      // 添加子分组
-      const addSubgroupBtn = groupHeader.querySelector('.add-subgroup-btn');
-      if (addSubgroupBtn) {
-        addSubgroupBtn.addEventListener('click', (e) => {
+      // 分组右键菜单（仅非默认分组）
+      if (fullPath !== '') {
+        groupHeader.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
           e.stopPropagation();
-          this.createSubGroup(fullPath);
-        });
-      }
-
-      // 重命名分组
-      const renameBtn = groupHeader.querySelector('.rename-group-btn');
-      if (renameBtn) {
-        renameBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          this.renameGroup(fullPath);
-        });
-      }
-
-      // 删除分组
-      const deleteBtn = groupHeader.querySelector('.delete-group-btn');
-      if (deleteBtn) {
-        deleteBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          this.deleteGroup(fullPath);
+          this.showGroupContextMenu(e, fullPath);
         });
       }
 
@@ -2483,6 +2458,56 @@ class SSHClient {
   showAlert(message) {
     // 使用 Electron 的原生对话框
     alert(message);
+  }
+
+  showGroupContextMenu(event, groupPath) {
+    const menu = document.getElementById('groupContextMenu');
+    
+    if (!menu) {
+      console.error('groupContextMenu element not found');
+      return;
+    }
+    
+    // 隐藏所有菜单
+    document.querySelectorAll('.context-menu').forEach(m => m.style.display = 'none');
+    
+    // 显示菜单
+    menu.style.display = 'block';
+    menu.style.left = event.pageX + 'px';
+    menu.style.top = event.pageY + 'px';
+    
+    // 移除之前的事件监听器
+    const newMenu = menu.cloneNode(true);
+    menu.parentNode.replaceChild(newMenu, menu);
+    
+    // 添加菜单项点击事件
+    newMenu.querySelectorAll('.context-menu-item').forEach(item => {
+      item.addEventListener('click', async () => {
+        const action = item.dataset.action;
+        newMenu.style.display = 'none';
+        
+        switch (action) {
+          case 'add-subgroup':
+            this.createSubGroup(groupPath);
+            break;
+          case 'rename':
+            this.renameGroup(groupPath);
+            break;
+          case 'delete':
+            await this.deleteGroup(groupPath);
+            break;
+        }
+      });
+    });
+    
+    // 点击其他地方关闭菜单
+    const closeMenu = (e) => {
+      if (!newMenu.contains(e.target)) {
+        newMenu.style.display = 'none';
+        document.removeEventListener('click', closeMenu);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closeMenu), 0);
   }
 
   // 导出配置
