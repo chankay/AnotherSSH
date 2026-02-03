@@ -213,6 +213,10 @@ class SSHClient {
 
   setupMenuListeners() {
     // 监听来自主进程菜单的事件
+    window.ipcRenderer.on('menu:new-local-shell', () => {
+      this.openLocalShell();
+    });
+
     window.ipcRenderer.on('menu:new-connection', () => {
       this.showConnectDialog();
     });
