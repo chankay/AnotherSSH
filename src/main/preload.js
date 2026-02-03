@@ -51,6 +51,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     export: (logPath) => ipcRenderer.invoke('log:export', logPath),
     openDir: () => ipcRenderer.invoke('log:openDir')
   },
+  localShell: {
+    spawn: (options) => ipcRenderer.invoke('local-shell:spawn', options),
+    write: (sessionId, data) => ipcRenderer.send('local-shell:write', { sessionId, data }),
+    resize: (sessionId, cols, rows) => ipcRenderer.invoke('local-shell:resize', { sessionId, cols, rows }),
+    kill: (sessionId) => ipcRenderer.invoke('local-shell:kill', sessionId),
+    onData: (callback) => ipcRenderer.on('local-shell:data', (event, data) => callback(data)),
+    onClosed: (callback) => ipcRenderer.on('local-shell:closed', (event, data) => callback(data))
+  },
   checkUpdates: () => ipcRenderer.invoke('check-updates'),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   getAppVersion: () => ipcRenderer.invoke('get-app-version')

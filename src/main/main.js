@@ -6,6 +6,7 @@ const SFTPManager = require('./sftp-manager');
 const WebDAVSync = require('./webdav-sync');
 const LogManager = require('./log-manager');
 const MasterPassword = require('./master-password');
+const LocalShellManager = require('./local-shell-manager');
 
 let mainWindow;
 const sshManager = new SSHManager();
@@ -14,6 +15,7 @@ const sftpManager = new SFTPManager();
 const webdavSync = new WebDAVSync();
 const logManager = new LogManager();
 const masterPassword = new MasterPassword();
+const localShellManager = new LocalShellManager();
 
 // 创建应用菜单
 function createMenu() {
@@ -307,6 +309,63 @@ ipcMain.handle('ssh:disconnect', async (event, sessionId) => {
     return { success: false, error: error.message };
   }
 });
+
+// ========== 本地 Shell IPC 处理器 ==========
+
+// 创建本地 Shell
+ipcMain.handle('local-shell:spawn', async (event, options) => {
+  try {
+    const sessionId = `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const result = localShellManager.spawn(sessionId, options);
+    
+    if (result.success) {
+      // 设置数据监听器
+      localShellManager.onData(sessionId, (data) => {
+        mainWindow.webContents.send('local-shell:data', { sessionId, data });
+      });
+      
+      // 设置退出监听器
+      localShellManager.onExit(sessionId, ({ exitCode, signal }) => {
+        console.log(`[LocalShell] Exited: ${sessionId}, code: ${exitCode}, signal: ${signal}`);
+        mainWindow.webContents.send('local-shell:closed', { sessionId, exitCode, signal });
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('[LocalShell] Failed to spawn:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// 发送数据到本地 Shell
+ipcMain.on('local-shell:write', (event, { sessionId, data }) => {
+  try {
+    localShellManager.write(sessionId, data);
+  } catch (error) {
+    console.error('[LocalShell] Write error:', error);
+  }
+});
+
+// 调整本地 Shell 大小
+ipcMain.handle('local-shell:resize', async (event, { sessionId, cols, rows }) => {
+  try {
+    return localShellManager.resize(sessionId, cols, rows);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// 关闭本地 Shell
+ipcMain.handle('local-shell:kill', async (event, sessionId) => {
+  try {
+    return localShellManager.kill(sessionId);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// ========== 会话管理 IPC 处理器 ==========
 
 ipcMain.handle('session:save', async (event, sessions) => {
   return sessionStore.saveSessions(sessions);

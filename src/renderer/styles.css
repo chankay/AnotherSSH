@@ -2963,3 +2963,18 @@ body.light-theme .context-menu-item:hover {
 .security-tips li {
   margin-bottom: 5px;
 }
+
+/* 本地终端标签样式 */
+.tab.local-shell-tab {
+  border-left: 3px solid #4caf50;
+}
+
+.tab.local-shell-tab.active {
+  border-left-width: 4px;
+  border-left-color: #4caf50;
+}
+
+.tab.local-shell-tab::before {
+  content: '💻';
+  margin-right: 6px;
+}

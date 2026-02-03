@@ -64,6 +64,14 @@ if (!window.electronAPI) {
       export: (logPath) => window.ipcRenderer.invoke('log:export', logPath),
       openDir: () => window.ipcRenderer.invoke('log:openDir')
     },
+    localShell: {
+      spawn: (options) => window.ipcRenderer.invoke('local-shell:spawn', options),
+      write: (sessionId, data) => window.ipcRenderer.send('local-shell:write', { sessionId, data }),
+      resize: (sessionId, cols, rows) => window.ipcRenderer.invoke('local-shell:resize', { sessionId, cols, rows }),
+      kill: (sessionId) => window.ipcRenderer.invoke('local-shell:kill', sessionId),
+      onData: (callback) => window.ipcRenderer.on('local-shell:data', (event, data) => callback(data)),
+      onClosed: (callback) => window.ipcRenderer.on('local-shell:closed', (event, data) => callback(data))
+    },
     masterPassword: {
       has: () => window.ipcRenderer.invoke('master-password:has'),
       hasPrompted: () => window.ipcRenderer.invoke('master-password:hasPrompted'),
@@ -405,6 +413,10 @@ class SSHClient {
 
     document.getElementById('newSessionBtn').addEventListener('click', () => {
       this.showConnectDialog();
+    });
+
+    document.getElementById('newLocalShellBtn').addEventListener('click', () => {
+      this.openLocalShell();
     });
 
     document.getElementById('newGroupBtn').addEventListener('click', () => {
@@ -1461,11 +1473,18 @@ class SSHClient {
       this.updateTabStatus(sessionId, 'disconnected');
     }
     
-    // 获取实际的 SSH sessionId（可能重连后变了）
+    // 获取终端数据
     const terminalData = this.terminals.get(sessionId);
-    const actualSessionId = terminalData ? (terminalData.sessionId || sessionId) : sessionId;
     
-    await window.electronAPI.ssh.disconnect(actualSessionId);
+    // 检查是否为本地 Shell
+    if (terminalData && terminalData.type === 'local') {
+      // 关闭本地 Shell
+      await window.electronAPI.localShell.kill(sessionId);
+    } else {
+      // 获取实际的 SSH sessionId（可能重连后变了）
+      const actualSessionId = terminalData ? (terminalData.sessionId || sessionId) : sessionId;
+      await window.electronAPI.ssh.disconnect(actualSessionId);
+    }
     
     if (terminalData) {
       terminalData.terminal.dispose();
@@ -5493,6 +5512,196 @@ class SSHClient {
         }
       });
     });
+  }
+
+  // ========== 本地 Shell 功能 ==========
+
+  // 打开本地终端
+  async openLocalShell() {
+    try {
+      const result = await window.electronAPI.localShell.spawn({
+        cols: 80,
+        rows: 24
+      });
+
+      if (!result.success) {
+        this.showNotification(`打开本地终端失败: ${result.error}`, 'error');
+        return;
+      }
+
+      const sessionId = result.sessionId;
+      const shellName = result.shell.split('/').pop() || result.shell;
+      const config = {
+        name: `本地终端 (${shellName})`,
+        type: 'local',
+        shell: result.shell,
+        cwd: result.cwd
+      };
+
+      // 创建终端
+      this.createLocalTerminal(sessionId, config);
+      
+      // 监听本地 Shell 数据
+      window.electronAPI.localShell.onData((data) => {
+        if (data.sessionId === sessionId) {
+          const terminalData = this.terminals.get(sessionId);
+          if (terminalData && terminalData.terminal) {
+            terminalData.terminal.write(data.data);
+          }
+        }
+      });
+
+      // 监听本地 Shell 关闭
+      window.electronAPI.localShell.onClosed((data) => {
+        if (data.sessionId === sessionId) {
+          console.log(`[LocalShell] Closed: ${sessionId}`);
+          this.closeSession(sessionId);
+        }
+      });
+
+      this.showNotification('本地终端已打开', 'success');
+    } catch (error) {
+      console.error('[LocalShell] Failed to open:', error);
+      this.showNotification('打开本地终端失败', 'error');
+    }
+  }
+
+  // 创建本地终端
+  createLocalTerminal(sessionId, config) {
+    const settings = JSON.parse(localStorage.getItem('appSettings') || '{}');
+    const themes = this.getPresetThemes();
+    
+    let terminalConfig;
+    if (settings.themeMode === 'custom' && settings.customTheme && settings.customTheme.terminal) {
+      terminalConfig = settings.customTheme.terminal;
+    } else if (settings.themeMode && themes[settings.themeMode]) {
+      terminalConfig = themes[settings.themeMode].terminal;
+    } else {
+      terminalConfig = themes.dark.terminal;
+    }
+    
+    if (settings.terminal) {
+      terminalConfig = {
+        ...terminalConfig,
+        fontSize: settings.terminal.fontSize || terminalConfig.fontSize,
+        fontFamily: settings.terminal.fontFamily || terminalConfig.fontFamily,
+        cursorStyle: settings.terminal.cursorStyle || terminalConfig.cursorStyle,
+        cursorBlink: settings.terminal.cursorBlink !== undefined ? settings.terminal.cursorBlink : terminalConfig.cursorBlink,
+        background: settings.terminal.background || terminalConfig.background,
+        foreground: settings.terminal.foreground || terminalConfig.foreground,
+        cursor: settings.terminal.cursor || terminalConfig.cursor
+      };
+    }
+    
+    const terminal = new window.Terminal({
+      cursorBlink: terminalConfig.cursorBlink,
+      fontSize: terminalConfig.fontSize,
+      lineHeight: 1.2,
+      fontFamily: terminalConfig.fontFamily,
+      cursorStyle: terminalConfig.cursorStyle,
+      theme: {
+        background: terminalConfig.background,
+        foreground: terminalConfig.foreground,
+        cursor: terminalConfig.cursor,
+        cursorAccent: terminalConfig.cursorAccent
+      },
+      scrollback: 1000,
+      allowProposedApi: true
+    });
+
+    const fitAddon = new window.FitAddon();
+    const searchAddon = new window.SearchAddon();
+    
+    terminal.loadAddon(fitAddon);
+    terminal.loadAddon(searchAddon);
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'terminal-wrapper';
+    wrapper.id = `terminal-${sessionId}`;
+    document.getElementById('terminalContainer').appendChild(wrapper);
+
+    terminal.open(wrapper);
+    
+    setTimeout(() => {
+      fitAddon.fit();
+      terminal.focus();
+      
+      setTimeout(() => {
+        if (terminal.cols && terminal.rows) {
+          window.electronAPI.localShell.resize(sessionId, terminal.cols, terminal.rows);
+        }
+      }, 100);
+    }, 200);
+
+    terminal.onData((data) => {
+      window.electronAPI.localShell.write(sessionId, data);
+    });
+
+    terminal.attachCustomKeyEventHandler((event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'v' && event.type === 'keydown') {
+        event.preventDefault();
+        navigator.clipboard.readText().then(text => {
+          terminal.paste(text);
+        }).catch(err => {
+          console.error('Failed to read clipboard:', err);
+        });
+        return false;
+      }
+      
+      if ((event.ctrlKey || event.metaKey) && event.key === 'c' && event.type === 'keydown') {
+        if (terminal.hasSelection()) {
+          event.preventDefault();
+          const selection = terminal.getSelection();
+          navigator.clipboard.writeText(selection).catch(err => {
+            console.error('Failed to write clipboard:', err);
+          });
+          return false;
+        }
+      }
+      
+      return true;
+    });
+
+    this.terminals.set(sessionId, {
+      terminal,
+      fitAddon,
+      searchAddon,
+      sessionId,
+      config,
+      type: 'local'
+    });
+
+    this.createLocalTab(sessionId, config);
+    this.switchToSession(sessionId);
+    
+    document.getElementById('terminalToolbar').style.display = 'flex';
+  }
+
+  // 创建本地终端标签页
+  createLocalTab(sessionId, config) {
+    const tabsContainer = document.getElementById('tabs');
+    const tab = document.createElement('div');
+    tab.className = 'tab local-shell-tab';
+    tab.id = `tab-${sessionId}`;
+    
+    tab.innerHTML = `
+      <span class="tab-status connected" title="本地终端">💻</span>
+      <span class="tab-name">${config.name}</span>
+      <span class="tab-close" data-session="${sessionId}">✕</span>
+    `;
+
+    tab.addEventListener('click', (e) => {
+      if (!e.target.classList.contains('tab-close')) {
+        this.switchToSession(sessionId);
+      }
+    });
+
+    tab.querySelector('.tab-close').addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.closeSession(sessionId);
+    });
+
+    tabsContainer.appendChild(tab);
   }
 }
 
