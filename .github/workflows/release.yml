@@ -186,18 +186,19 @@ jobs:
           # 读取 release notes
           RELEASE_BODY=$(cat release_notes.md | jq -Rs .)
           
+          # 使用 --insecure 跳过 SSL 验证（或使用 --cacert 指定证书）
           # 检查 Release 是否已存在
-          EXISTING_RELEASE=$(curl -s "https://gitee.com/api/v5/repos/chankay/AnotherSSH/releases/tags/${TAG_NAME}?access_token=${GITEE_TOKEN}")
+          EXISTING_RELEASE=$(curl -k -s "https://gitee.com/api/v5/repos/chankay/AnotherSSH/releases/tags/${TAG_NAME}?access_token=${GITEE_TOKEN}")
           EXISTING_ID=$(echo "$EXISTING_RELEASE" | jq -r '.id')
           
           if [ "$EXISTING_ID" != "null" ] && [ -n "$EXISTING_ID" ]; then
             echo "Release already exists with ID: $EXISTING_ID, deleting..."
-            curl -X DELETE "https://gitee.com/api/v5/repos/chankay/AnotherSSH/releases/${EXISTING_ID}?access_token=${GITEE_TOKEN}"
+            curl -k -X DELETE "https://gitee.com/api/v5/repos/chankay/AnotherSSH/releases/${EXISTING_ID}?access_token=${GITEE_TOKEN}"
             sleep 2
           fi
           
           # 创建 Gitee Release
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "https://gitee.com/api/v5/repos/chankay/AnotherSSH/releases" \
+          RESPONSE=$(curl -k -s -w "\n%{http_code}" -X POST "https://gitee.com/api/v5/repos/chankay/AnotherSSH/releases" \
             -H "Content-Type: application/json" \
             -d "{
               \"access_token\": \"${GITEE_TOKEN}\",
@@ -229,7 +230,7 @@ jobs:
                   filesize=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file")
                   echo "Uploading ${filename} (${filesize} bytes)..."
                   
-                  UPLOAD_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+                  UPLOAD_RESPONSE=$(curl -k -s -w "\n%{http_code}" -X POST \
                     "https://gitee.com/api/v5/repos/chankay/AnotherSSH/releases/${RELEASE_ID}/attach_files" \
                     -F "access_token=${GITEE_TOKEN}" \
                     -F "file=@${file}")
